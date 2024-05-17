@@ -13,7 +13,7 @@ fn main() -> pyo3::PyResult<()> {
     });
 
     Python::with_gil(|py| {
-        let uvloop = py.import("uvloop")?;
+        let uvloop = py.import_bound("uvloop")?;
         uvloop.call_method0("install")?;
 
         // store a reference for the assertion
@@ -24,7 +24,7 @@ fn main() -> pyo3::PyResult<()> {
             Python::with_gil(|py| -> PyResult<()> {
                 assert!(pyo3_asyncio::tokio::get_current_loop(py)?.is_instance(
                     uvloop
-                        .as_ref(py)
+                        .bind(py)
                         .getattr("Loop")?
                         .downcast::<PyType>()
                         .unwrap()

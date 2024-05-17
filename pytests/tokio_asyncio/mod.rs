@@ -17,7 +17,7 @@ use futures::{StreamExt, TryStreamExt};
 use crate::common;
 
 #[pyfunction]
-fn sleep<'p>(py: Python<'p>, secs: &'p PyAny) -> PyResult<&'p PyAny> {
+fn sleep<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
     let secs = secs.extract()?;
 
     pyo3_asyncio::tokio::future_into_py(py, async move {
@@ -29,11 +29,11 @@ fn sleep<'p>(py: Python<'p>, secs: &'p PyAny) -> PyResult<&'p PyAny> {
 #[pyo3_asyncio::tokio::test]
 async fn test_future_into_py() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
-        let sleeper_mod = PyModule::new(py, "rust_sleeper")?;
+        let sleeper_mod = PyModule::new_bound(py, "rust_sleeper")?;
 
         sleeper_mod.add_wrapped(wrap_pyfunction!(sleep))?;
 
-        let test_mod = PyModule::from_code(
+        let test_mod = PyModule::from_code_bound(
             py,
             common::TEST_MOD,
             "test_future_into_py_mod.py",
@@ -52,13 +52,15 @@ async fn test_future_into_py() -> PyResult<()> {
 
 #[pyo3_asyncio::tokio::test]
 async fn test_async_sleep() -> PyResult<()> {
-    let asyncio =
-        Python::with_gil(|py| py.import("asyncio").map(|asyncio| PyObject::from(asyncio)))?;
+    let asyncio = Python::with_gil(|py| {
+        py.import_bound("asyncio")
+            .map(|asyncio| PyObject::from(asyncio))
+    })?;
 
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     Python::with_gil(|py| {
-        pyo3_asyncio::tokio::into_future(asyncio.as_ref(py).call_method1("sleep", (1.0,))?)
+        pyo3_asyncio::tokio::into_future(asyncio.bind(py).call_method1("sleep", (1.0,))?)
     })?
     .await?;
 
@@ -95,7 +97,7 @@ fn test_local_future_into_py(event_loop: PyObject) -> PyResult<()> {
             #[allow(deprecated)]
             let py_future = pyo3_asyncio::tokio::local_future_into_py_with_locals(
                 py,
-                TaskLocals::new(event_loop.as_ref(py)),
+                TaskLocals::new(event_loop.bind(py).clone()),
                 async move {
                     tokio::time::sleep(Duration::from_secs(*non_send_secs)).await;
                     Ok(())
@@ -103,7 +105,7 @@ fn test_local_future_into_py(event_loop: PyObject) -> PyResult<()> {
             )?;
 
             pyo3_asyncio::into_future_with_locals(
-                &TaskLocals::new(event_loop.as_ref(py)),
+                &TaskLocals::new(event_loop.into_bound(py)),
                 py_future,
             )
         })?
@@ -149,14 +151,14 @@ async fn test_cancel() -> PyResult<()> {
     })?;
 
     if let Err(e) = Python::with_gil(|py| -> PyResult<_> {
-        py_future.as_ref(py).call_method0("cancel")?;
-        pyo3_asyncio::tokio::into_future(py_future.as_ref(py))
+        py_future.bind(py).call_method0("cancel")?;
+        pyo3_asyncio::tokio::into_future(py_future.into_bound(py))
     })?
     .await
     {
         Python::with_gil(|py| -> PyResult<()> {
-            assert!(e.value(py).is_instance(
-                py.import("asyncio")?
+            assert!(e.value_bound(py).is_instance(
+                py.import_bound("asyncio")?
                     .getattr("CancelledError")?
                     .downcast::<PyType>()
                     .unwrap()
@@ -179,7 +181,7 @@ async fn test_cancel() -> PyResult<()> {
 #[allow(deprecated)]
 fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
     let locals = Python::with_gil(|py| -> PyResult<TaskLocals> {
-        Ok(TaskLocals::new(event_loop.as_ref(py)).copy_context(py)?)
+        Ok(TaskLocals::new(event_loop.into_bound(py)).copy_context(py)?)
     })?;
 
     tokio::task::LocalSet::new().block_on(
@@ -199,14 +201,14 @@ fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
             })?;
 
             if let Err(e) = Python::with_gil(|py| -> PyResult<_> {
-                py_future.as_ref(py).call_method0("cancel")?;
-                pyo3_asyncio::tokio::into_future(py_future.as_ref(py))
+                py_future.bind(py).call_method0("cancel")?;
+                pyo3_asyncio::tokio::into_future(py_future.into_bound(py))
             })?
             .await
             {
                 Python::with_gil(|py| -> PyResult<()> {
-                    assert!(e.value(py).is_instance(
-                        py.import("asyncio")?
+                    assert!(e.value_bound(py).is_instance(
+                        py.import_bound("asyncio")?
                             .getattr("CancelledError")?
                             .downcast::<PyType>()
                             .unwrap()
@@ -233,7 +235,7 @@ fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
 fn test_mod(_py: Python, m: &PyModule) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction(name = "sleep")]
-    fn sleep_(py: Python) -> PyResult<&PyAny> {
+    fn sleep_(py: Python) -> PyResult<Bound<PyAny>> {
         pyo3_asyncio::tokio::future_into_py(py, async move {
             tokio::time::sleep(Duration::from_millis(500)).await;
             Ok(())
@@ -265,13 +267,13 @@ fn test_multiple_asyncio_run() -> PyResult<()> {
         })?;
 
         let d = [
-            ("asyncio", py.import("asyncio")?.into()),
+            ("asyncio", py.import_bound("asyncio")?.into()),
             ("test_mod", wrap_pymodule!(test_mod)(py)),
         ]
-        .into_py_dict(py);
+        .into_py_dict_bound(py);
 
-        py.run(TEST_CODE, Some(d), None)?;
-        py.run(TEST_CODE, Some(d), None)?;
+        py.run_bound(TEST_CODE, Some(&d), None)?;
+        py.run_bound(TEST_CODE, Some(&d), None)?;
         Ok(())
     })
 }
@@ -280,9 +282,9 @@ fn test_multiple_asyncio_run() -> PyResult<()> {
 fn cvars_mod(_py: Python, m: &PyModule) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction]
-    fn async_callback(py: Python, callback: PyObject) -> PyResult<&PyAny> {
+    fn async_callback(py: Python, callback: PyObject) -> PyResult<Bound<PyAny>> {
         pyo3_asyncio::tokio::future_into_py(py, async move {
-            Python::with_gil(|py| pyo3_asyncio::tokio::into_future(callback.as_ref(py).call0()?))?
+            Python::with_gil(|py| pyo3_asyncio::tokio::into_future(callback.bind(py).call0()?))?
                 .await?;
 
             Ok(())
@@ -308,7 +310,7 @@ async def gen():
 #[pyo3_asyncio::tokio::test]
 async fn test_async_gen_v1() -> PyResult<()> {
     let stream = Python::with_gil(|py| {
-        let test_mod = PyModule::from_code(
+        let test_mod = PyModule::from_code_bound(
             py,
             TOKIO_TEST_MOD,
             "test_rust_coroutine/tokio_test_mod.py",
@@ -319,7 +321,7 @@ async fn test_async_gen_v1() -> PyResult<()> {
     })?;
 
     let vals = stream
-        .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.as_ref(py).extract()?) }))
+        .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
         .try_collect::<Vec<i32>>()
         .await?;
 
@@ -332,7 +334,7 @@ async fn test_async_gen_v1() -> PyResult<()> {
 #[pyo3_asyncio::tokio::test]
 async fn test_async_gen_v2() -> PyResult<()> {
     let stream = Python::with_gil(|py| {
-        let test_mod = PyModule::from_code(
+        let test_mod = PyModule::from_code_bound(
             py,
             TOKIO_TEST_MOD,
             "test_rust_coroutine/tokio_test_mod.py",
@@ -343,7 +345,7 @@ async fn test_async_gen_v2() -> PyResult<()> {
     })?;
 
     let vals = stream
-        .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.as_ref(py).extract()?) }))
+        .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
         .try_collect::<Vec<i32>>()
         .await?;
 
@@ -369,14 +371,14 @@ asyncio.run(main())
 fn test_contextvars() -> PyResult<()> {
     Python::with_gil(|py| {
         let d = [
-            ("asyncio", py.import("asyncio")?.into()),
-            ("contextvars", py.import("contextvars")?.into()),
+            ("asyncio", py.import_bound("asyncio")?.into()),
+            ("contextvars", py.import_bound("contextvars")?.into()),
             ("cvars_mod", wrap_pymodule!(cvars_mod)(py)),
         ]
-        .into_py_dict(py);
+        .into_py_dict_bound(py);
 
-        py.run(CONTEXTVARS_CODE, Some(d), None)?;
-        py.run(CONTEXTVARS_CODE, Some(d), None)?;
+        py.run_bound(CONTEXTVARS_CODE, Some(&d), None)?;
+        py.run_bound(CONTEXTVARS_CODE, Some(&d), None)?;
         Ok(())
     })
 }

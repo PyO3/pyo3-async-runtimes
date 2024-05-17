@@ -1,7 +1,7 @@
 use pyo3::{prelude::*, wrap_pyfunction};
 
 #[pyfunction]
-fn sleep<'p>(py: Python<'p>, secs: &'p PyAny) -> PyResult<&'p PyAny> {
+fn sleep<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
     let secs = secs.extract()?;
 
     pyo3_asyncio::async_std::future_into_py(py, async move {
@@ -49,11 +49,11 @@ fn main() -> pyo3::PyResult<()> {
     pyo3::prepare_freethreaded_python();
 
     Python::with_gil(|py| -> PyResult<()> {
-        let sleeper_mod = PyModule::new(py, "rust_sleeper")?;
+        let sleeper_mod = PyModule::new_bound(py, "rust_sleeper")?;
 
         sleeper_mod.add_wrapped(wrap_pyfunction!(sleep))?;
 
-        let test_mod = PyModule::from_code(
+        let test_mod = PyModule::from_code_bound(
             py,
             RACE_CONDITION_REGRESSION_TEST,
             "race_condition_regression_test.py",
