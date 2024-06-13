@@ -10,16 +10,18 @@ fn main() -> pyo3::PyResult<()> {
         // store a reference for the assertion
         let uvloop = PyObject::from(uvloop);
 
-        pyo3_asyncio::async_std::run(py, async move {
+        pyo3_asyncio_0_21::async_std::run(py, async move {
             // verify that we are on a uvloop.Loop
             Python::with_gil(|py| -> PyResult<()> {
-                assert!(pyo3_asyncio::async_std::get_current_loop(py)?.is_instance(
-                    uvloop
-                        .bind(py)
-                        .getattr("Loop")?
-                        .downcast::<PyType>()
-                        .unwrap()
-                )?);
+                assert!(
+                    pyo3_asyncio_0_21::async_std::get_current_loop(py)?.is_instance(
+                        uvloop
+                            .bind(py)
+                            .getattr("Loop")?
+                            .downcast::<PyType>()
+                            .unwrap()
+                    )?
+                );
                 Ok(())
             })?;
 

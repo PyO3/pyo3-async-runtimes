@@ -8,8 +8,8 @@
 //! are only available when the `unstable-streams` Cargo feature is enabled:
 //!
 //! ```toml
-//! [dependencies.pyo3-asyncio]
-//! version = "0.20"
+//! [dependencies.pyo3-asyncio-0-21]
+//! version = "0.21"
 //! features = ["unstable-streams"]
 //! ```
 
@@ -34,13 +34,13 @@ pub mod re_exports {
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span> Provides the boilerplate for the `async-std` runtime and runs an async fn as main
 #[cfg(feature = "attributes")]
-pub use pyo3_asyncio_macros::async_std_main as main;
+pub use pyo3_asyncio_macros_0_21::async_std_main as main;
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span>
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>testing</code></span>
 /// Registers an `async-std` test with the `pyo3-asyncio` test harness
 #[cfg(all(feature = "attributes", feature = "testing"))]
-pub use pyo3_asyncio_macros::async_std_test as test;
+pub use pyo3_asyncio_macros_0_21::async_std_test as test;
 
 struct AsyncStdJoinErr(Box<dyn Any + Send + 'static>);
 
@@ -175,7 +175,7 @@ pub fn get_current_locals(py: Python) -> PyResult<TaskLocals> {
 /// #
 /// # Python::with_gil(|py| -> PyResult<()> {
 /// # let event_loop = py.import_bound("asyncio")?.call_method0("new_event_loop")?;
-/// pyo3_asyncio::async_std::run_until_complete(event_loop, async move {
+/// pyo3_asyncio_0_21::async_std::run_until_complete(event_loop, async move {
 ///     async_std::task::sleep(Duration::from_secs(1)).await;
 ///     Ok(())
 /// })?;
@@ -208,7 +208,7 @@ where
 ///     pyo3::prepare_freethreaded_python();
 ///
 ///     Python::with_gil(|py| {
-///         pyo3_asyncio::async_std::run(py, async move {
+///         pyo3_asyncio_0_21::async_std::run(py, async move {
 ///             async_std::task::sleep(Duration::from_secs(1)).await;
 ///             Ok(())
 ///         })
@@ -260,9 +260,9 @@ where
 /// #[pyfunction]
 /// fn sleep_for<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
 ///     let secs = secs.extract()?;
-///     pyo3_asyncio::async_std::future_into_py_with_locals(
+///     pyo3_asyncio_0_21::async_std::future_into_py_with_locals(
 ///         py,
-///         pyo3_asyncio::async_std::get_current_locals(py)?,
+///         pyo3_asyncio_0_21::async_std::get_current_locals(py)?,
 ///         async move {
 ///             async_std::task::sleep(Duration::from_secs(secs)).await;
 ///             Python::with_gil(|py| Ok(py.None()))
@@ -314,7 +314,7 @@ where
 /// #[pyfunction]
 /// fn sleep_for<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
 ///     let secs = secs.extract()?;
-///     pyo3_asyncio::async_std::future_into_py(py, async move {
+///     pyo3_asyncio_0_21::async_std::future_into_py(py, async move {
 ///         async_std::task::sleep(Duration::from_secs(secs)).await;
 ///         Ok(())
 ///     })
@@ -360,11 +360,11 @@ where
 /// /// Awaitable non-send sleep function
 /// #[pyfunction]
 /// fn sleep_for(py: Python, secs: u64) -> PyResult<Bound<PyAny>> {
-///     // Rc is non-send so it cannot be passed into pyo3_asyncio::async_std::future_into_py
+///     // Rc is non-send so it cannot be passed into pyo3_asyncio_0_21::async_std::future_into_py
 ///     let secs = Rc::new(secs);
-///     Ok(pyo3_asyncio::async_std::local_future_into_py_with_locals(
+///     Ok(pyo3_asyncio_0_21::async_std::local_future_into_py_with_locals(
 ///         py,
-///         pyo3_asyncio::async_std::get_current_locals(py)?,
+///         pyo3_asyncio_0_21::async_std::get_current_locals(py)?,
 ///         async move {
 ///             async_std::task::sleep(Duration::from_secs(*secs)).await;
 ///             Python::with_gil(|py| Ok(py.None()))
@@ -373,11 +373,11 @@ where
 /// }
 ///
 /// # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
-/// #[pyo3_asyncio::async_std::main]
+/// #[pyo3_asyncio_0_21::async_std::main]
 /// async fn main() -> PyResult<()> {
 ///     Python::with_gil(|py| {
 ///         let py_future = sleep_for(py, 1)?;
-///         pyo3_asyncio::async_std::into_future(py_future)
+///         pyo3_asyncio_0_21::async_std::into_future(py_future)
 ///     })?
 ///     .await?;
 ///
@@ -434,20 +434,20 @@ where
 /// /// Awaitable non-send sleep function
 /// #[pyfunction]
 /// fn sleep_for(py: Python, secs: u64) -> PyResult<Bound<PyAny>> {
-///     // Rc is non-send so it cannot be passed into pyo3_asyncio::async_std::future_into_py
+///     // Rc is non-send so it cannot be passed into pyo3_asyncio_0_21::async_std::future_into_py
 ///     let secs = Rc::new(secs);
-///     pyo3_asyncio::async_std::local_future_into_py(py, async move {
+///     pyo3_asyncio_0_21::async_std::local_future_into_py(py, async move {
 ///         async_std::task::sleep(Duration::from_secs(*secs)).await;
 ///         Ok(())
 ///     })
 /// }
 ///
 /// # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
-/// #[pyo3_asyncio::async_std::main]
+/// #[pyo3_asyncio_0_21::async_std::main]
 /// async fn main() -> PyResult<()> {
 ///     Python::with_gil(|py| {
 ///         let py_future = sleep_for(py, 1)?;
-///         pyo3_asyncio::async_std::into_future(py_future)
+///         pyo3_asyncio_0_21::async_std::into_future(py_future)
 ///     })?
 ///     .await?;
 ///
@@ -507,7 +507,7 @@ where
 ///     })?;
 ///
 ///     Python::with_gil(|py| {
-///         pyo3_asyncio::async_std::into_future(
+///         pyo3_asyncio_0_21::async_std::into_future(
 ///             test_mod
 ///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
 ///                 .into_bound(py),
@@ -547,7 +547,7 @@ pub fn into_future(
 /// "#;
 ///
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
-/// # #[pyo3_asyncio::async_std::main]
+/// # #[pyo3_asyncio_0_21::async_std::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
 ///     let test_mod = PyModule::from_code_bound(
@@ -557,7 +557,7 @@ pub fn into_future(
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio::async_std::into_stream_v1(test_mod.call_method0("gen")?)
+///     pyo3_asyncio_0_21::async_std::into_stream_v1(test_mod.call_method0("gen")?)
 /// })?;
 ///
 /// let vals = stream
@@ -604,7 +604,7 @@ pub fn into_stream_v1<'p>(
 /// "#;
 ///
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
-/// # #[pyo3_asyncio::async_std::main]
+/// # #[pyo3_asyncio_0_21::async_std::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
 ///     let test_mod = PyModule::from_code_bound(
@@ -614,8 +614,8 @@ pub fn into_stream_v1<'p>(
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio::async_std::into_stream_with_locals_v1(
-///         pyo3_asyncio::async_std::get_current_locals(py)?,
+///     pyo3_asyncio_0_21::async_std::into_stream_with_locals_v1(
+///         pyo3_asyncio_0_21::async_std::get_current_locals(py)?,
 ///         test_mod.call_method0("gen")?
 ///     )
 /// })?;
@@ -665,7 +665,7 @@ pub fn into_stream_with_locals_v1<'p>(
 /// "#;
 ///
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
-/// # #[pyo3_asyncio::async_std::main]
+/// # #[pyo3_asyncio_0_21::async_std::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
 ///     let test_mod = PyModule::from_code_bound(
@@ -675,8 +675,8 @@ pub fn into_stream_with_locals_v1<'p>(
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio::async_std::into_stream_with_locals_v2(
-///         pyo3_asyncio::async_std::get_current_locals(py)?,
+///     pyo3_asyncio_0_21::async_std::into_stream_with_locals_v2(
+///         pyo3_asyncio_0_21::async_std::get_current_locals(py)?,
 ///         test_mod.call_method0("gen")?
 ///     )
 /// })?;
@@ -725,7 +725,7 @@ pub fn into_stream_with_locals_v2<'p>(
 /// "#;
 ///
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
-/// # #[pyo3_asyncio::async_std::main]
+/// # #[pyo3_asyncio_0_21::async_std::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
 ///     let test_mod = PyModule::from_code_bound(
@@ -735,7 +735,7 @@ pub fn into_stream_with_locals_v2<'p>(
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio::async_std::into_stream_v2(test_mod.call_method0("gen")?)
+///     pyo3_asyncio_0_21::async_std::into_stream_v2(test_mod.call_method0("gen")?)
 /// })?;
 ///
 /// let vals = stream

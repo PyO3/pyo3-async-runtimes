@@ -7,9 +7,9 @@ fn main() -> pyo3::PyResult<()> {
     let mut builder = tokio::runtime::Builder::new_current_thread();
     builder.enable_all();
 
-    pyo3_asyncio::tokio::init(builder);
+    pyo3_asyncio_0_21::tokio::init(builder);
     std::thread::spawn(move || {
-        pyo3_asyncio::tokio::get_runtime().block_on(futures::future::pending::<()>());
+        pyo3_asyncio_0_21::tokio::get_runtime().block_on(futures::future::pending::<()>());
     });
 
     Python::with_gil(|py| {
@@ -19,10 +19,10 @@ fn main() -> pyo3::PyResult<()> {
         // store a reference for the assertion
         let uvloop = PyObject::from(uvloop);
 
-        pyo3_asyncio::tokio::run(py, async move {
+        pyo3_asyncio_0_21::tokio::run(py, async move {
             // verify that we are on a uvloop.Loop
             Python::with_gil(|py| -> PyResult<()> {
-                assert!(pyo3_asyncio::tokio::get_current_loop(py)?.is_instance(
+                assert!(pyo3_asyncio_0_21::tokio::get_current_loop(py)?.is_instance(
                     uvloop
                         .bind(py)
                         .getattr("Loop")?

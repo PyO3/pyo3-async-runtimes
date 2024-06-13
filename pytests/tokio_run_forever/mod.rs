@@ -17,7 +17,7 @@ pub(super) fn test_main() {
 
         let event_loop_hdl = PyObject::from(event_loop.clone());
 
-        pyo3_asyncio::tokio::get_runtime().spawn(async move {
+        pyo3_asyncio_0_21::tokio::get_runtime().spawn(async move {
             tokio::time::sleep(Duration::from_secs(1)).await;
 
             Python::with_gil(|py| {

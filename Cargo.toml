@@ -1,24 +1,28 @@
 [package]
-name = "pyo3-asyncio"
-description = "PyO3 utilities for Python's Asyncio library"
+name = "pyo3-asyncio-0-21"
+description = "PyO3 utilities for Python's Asyncio library - 0.21 fork"
 version = "0.21.0"
-authors = ["Andrew J Westlake <awestlake87@yahoo.com>"]
+authors = [
+    "Andrew J Westlake <awestlake87@yahoo.com>",
+    "David Hewitt <mail@davidhewitt.dev>",
+]
 readme = "README.md"
 keywords = ["pyo3", "python", "ffi", "async", "asyncio"]
-homepage = "https://github.com/awestlake87/pyo3-asyncio"
-repository = "https://github.com/awestlake87/pyo3-asyncio"
-documentation = "https://docs.rs/crate/pyo3-asyncio/"
+homepage = "https://github.com/davidhewitt/pyo3-asyncio"
+repository = "https://github.com/davidhewitt/pyo3-asyncio"
+documentation = "https://docs.rs/crate/pyo3-asyncio-0-21/"
 categories = ["api-bindings", "development-tools::ffi"]
 license = "Apache-2.0"
 exclude = ["/.gitignore", "/codecov.yml", "/Makefile"]
 edition = "2021"
+rust-version = "1.63"
 
 [workspace]
 members = ["pyo3-asyncio-macros"]
 
 [features]
 async-std-runtime = ["async-std"]
-attributes = ["pyo3-asyncio-macros"]
+attributes = ["pyo3-asyncio-macros-0-21"]
 testing = ["clap", "inventory"]
 tokio-runtime = ["tokio"]
 unstable-streams = ["async-channel"]
@@ -117,7 +121,7 @@ inventory = { version = "0.3", optional = true }
 once_cell = "1.14"
 pin-project-lite = "0.2"
 pyo3 = "0.21"
-pyo3-asyncio-macros = { path = "pyo3-asyncio-macros", version = "=0.20.0", optional = true }
+pyo3-asyncio-macros-0-21 = { path = "pyo3-asyncio-macros", version = "=0.21.0", optional = true }
 
 [dev-dependencies]
 pyo3 = { version = "0.21", features = ["macros"] }

@@ -8,8 +8,8 @@
 //! are only available when the `unstable-streams` Cargo feature is enabled:
 //!
 //! ```toml
-//! [dependencies.pyo3-asyncio]
-//! version = "0.20"
+//! [dependencies.pyo3-asyncio-0-21]
+//! version = "0.21"
 //! features = ["unstable-streams"]
 //! ```
 
@@ -124,7 +124,7 @@ where
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, SpawnLocalExt, ContextExt, LocalContextExt, Runtime}
 /// # };
@@ -183,7 +183,7 @@ where
 /// # Python::with_gil(|py| -> PyResult<()> {
 /// # let event_loop = py.import_bound("asyncio")?.call_method0("new_event_loop")?;
 /// # #[cfg(feature = "tokio-runtime")]
-/// pyo3_asyncio::generic::run_until_complete::<MyCustomRuntime, _, _>(&event_loop, async move {
+/// pyo3_asyncio_0_21::generic::run_until_complete::<MyCustomRuntime, _, _>(&event_loop, async move {
 ///     tokio::time::sleep(Duration::from_secs(1)).await;
 ///     Ok(())
 /// })?;
@@ -228,7 +228,7 @@ where
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, SpawnLocalExt, ContextExt, LocalContextExt, Runtime}
 /// # };
@@ -287,7 +287,7 @@ where
 /// #
 /// fn main() {
 ///     Python::with_gil(|py| {
-///         pyo3_asyncio::generic::run::<MyCustomRuntime, _, _>(py, async move {
+///         pyo3_asyncio_0_21::generic::run::<MyCustomRuntime, _, _>(py, async move {
 ///             custom_sleep(Duration::from_secs(1)).await;
 ///             Ok(())
 ///         })
@@ -371,7 +371,7 @@ fn set_result(
 /// #
 /// # use pyo3::prelude::*;
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, SpawnLocalExt, ContextExt, LocalContextExt, Runtime}
 /// # };
@@ -450,7 +450,7 @@ fn set_result(
 ///     })?;
 ///
 ///     Python::with_gil(|py| {
-///         pyo3_asyncio::generic::into_future::<MyCustomRuntime>(
+///         pyo3_asyncio_0_21::generic::into_future::<MyCustomRuntime>(
 ///             test_mod
 ///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
 ///                 .into_bound(py),
@@ -496,7 +496,7 @@ where
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, SpawnLocalExt, ContextExt, LocalContextExt, Runtime}
 /// # };
@@ -562,9 +562,9 @@ where
 /// #[pyfunction]
 /// fn sleep_for<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
 ///     let secs = secs.extract()?;
-///     pyo3_asyncio::generic::future_into_py_with_locals::<MyCustomRuntime, _, _>(
+///     pyo3_asyncio_0_21::generic::future_into_py_with_locals::<MyCustomRuntime, _, _>(
 ///         py,
-///         pyo3_asyncio::generic::get_current_locals::<MyCustomRuntime>(py)?,
+///         pyo3_asyncio_0_21::generic::get_current_locals::<MyCustomRuntime>(py)?,
 ///         async move {
 ///             MyCustomRuntime::sleep(Duration::from_secs(secs)).await;
 ///             Ok(())
@@ -768,7 +768,7 @@ impl PyDoneCallback {
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, SpawnLocalExt, ContextExt, LocalContextExt, Runtime}
 /// # };
@@ -834,7 +834,7 @@ impl PyDoneCallback {
 /// #[pyfunction]
 /// fn sleep_for<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
 ///     let secs = secs.extract()?;
-///     pyo3_asyncio::generic::future_into_py::<MyCustomRuntime, _, _>(py, async move {
+///     pyo3_asyncio_0_21::generic::future_into_py::<MyCustomRuntime, _, _>(py, async move {
 ///         MyCustomRuntime::sleep(Duration::from_secs(secs)).await;
 ///         Ok(())
 ///     })
@@ -877,7 +877,7 @@ where
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, SpawnLocalExt, ContextExt, LocalContextExt, Runtime}
 /// # };
@@ -960,12 +960,12 @@ where
 /// /// Awaitable sleep function
 /// #[pyfunction]
 /// fn sleep_for(py: Python, secs: u64) -> PyResult<Bound<PyAny>> {
-///     // Rc is !Send so it cannot be passed into pyo3_asyncio::generic::future_into_py
+///     // Rc is !Send so it cannot be passed into pyo3_asyncio_0_21::generic::future_into_py
 ///     let secs = Rc::new(secs);
 ///
-///     pyo3_asyncio::generic::local_future_into_py_with_locals::<MyCustomRuntime, _, _>(
+///     pyo3_asyncio_0_21::generic::local_future_into_py_with_locals::<MyCustomRuntime, _, _>(
 ///         py,
-///         pyo3_asyncio::generic::get_current_locals::<MyCustomRuntime>(py)?,
+///         pyo3_asyncio_0_21::generic::get_current_locals::<MyCustomRuntime>(py)?,
 ///         async move {
 ///             MyCustomRuntime::sleep(Duration::from_secs(*secs)).await;
 ///             Ok(())
@@ -1082,7 +1082,7 @@ where
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, SpawnLocalExt, ContextExt, LocalContextExt, Runtime}
 /// # };
@@ -1165,10 +1165,10 @@ where
 /// /// Awaitable sleep function
 /// #[pyfunction]
 /// fn sleep_for(py: Python, secs: u64) -> PyResult<Bound<PyAny>> {
-///     // Rc is !Send so it cannot be passed into pyo3_asyncio::generic::future_into_py
+///     // Rc is !Send so it cannot be passed into pyo3_asyncio_0_21::generic::future_into_py
 ///     let secs = Rc::new(secs);
 ///
-///     pyo3_asyncio::generic::local_future_into_py::<MyCustomRuntime, _, _>(py, async move {
+///     pyo3_asyncio_0_21::generic::local_future_into_py::<MyCustomRuntime, _, _>(py, async move {
 ///         MyCustomRuntime::sleep(Duration::from_secs(*secs)).await;
 ///         Ok(())
 ///     })
@@ -1202,7 +1202,7 @@ where
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, ContextExt, Runtime}
 /// # };
@@ -1275,8 +1275,8 @@ where
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio::generic::into_stream_with_locals_v1::<MyCustomRuntime>(
-///         pyo3_asyncio::generic::get_current_locals::<MyCustomRuntime>(py)?,
+///     pyo3_asyncio_0_21::generic::into_stream_with_locals_v1::<MyCustomRuntime>(
+///         pyo3_asyncio_0_21::generic::get_current_locals::<MyCustomRuntime>(py)?,
 ///         test_mod.call_method0("gen")?
 ///     )
 /// })?;
@@ -1350,7 +1350,7 @@ where
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, ContextExt, Runtime}
 /// # };
@@ -1423,7 +1423,7 @@ where
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio::generic::into_stream_v1::<MyCustomRuntime>(test_mod.call_method0("gen")?)
+///     pyo3_asyncio_0_21::generic::into_stream_v1::<MyCustomRuntime>(test_mod.call_method0("gen")?)
 /// })?;
 ///
 /// let vals = stream
@@ -1557,7 +1557,7 @@ async def forward(gen, sender):
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, ContextExt, Runtime}
 /// # };
@@ -1630,8 +1630,8 @@ async def forward(gen, sender):
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio::generic::into_stream_with_locals_v2::<MyCustomRuntime>(
-///         pyo3_asyncio::generic::get_current_locals::<MyCustomRuntime>(py)?,
+///     pyo3_asyncio_0_21::generic::into_stream_with_locals_v2::<MyCustomRuntime>(
+///         pyo3_asyncio_0_21::generic::get_current_locals::<MyCustomRuntime>(py)?,
 ///         test_mod.call_method0("gen")?
 ///     )
 /// })?;
@@ -1705,7 +1705,7 @@ where
 /// ```no_run
 /// # use std::{any::Any, task::{Context, Poll}, pin::Pin, future::Future};
 /// #
-/// # use pyo3_asyncio::{
+/// # use pyo3_asyncio_0_21::{
 /// #     TaskLocals,
 /// #     generic::{JoinError, ContextExt, Runtime}
 /// # };
@@ -1778,7 +1778,7 @@ where
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio::generic::into_stream_v2::<MyCustomRuntime>(test_mod.call_method0("gen")?)
+///     pyo3_asyncio_0_21::generic::into_stream_v2::<MyCustomRuntime>(test_mod.call_method0("gen")?)
 /// })?;
 ///
 /// let vals = stream

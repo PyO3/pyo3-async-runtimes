@@ -1,12 +1,12 @@
 use pyo3::prelude::*;
 
-#[pyo3_asyncio::tokio::main]
+#[pyo3_asyncio_0_21::tokio::main]
 async fn main() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
         let asyncio = py.import_bound("asyncio")?;
 
         // convert asyncio.sleep into a Rust Future
-        pyo3_asyncio::tokio::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
+        pyo3_asyncio_0_21::tokio::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
     })?;
 
     println!("sleeping for 1s");

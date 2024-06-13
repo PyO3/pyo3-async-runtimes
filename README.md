@@ -1,9 +1,11 @@
 # PyO3 Asyncio
 
-[![Actions Status](https://github.com/awestlake87/pyo3-asyncio/workflows/CI/badge.svg)](https://github.com/awestlake87/pyo3-asyncio/actions)
-[![codecov](https://codecov.io/gh/awestlake87/pyo3-asyncio/branch/master/graph/badge.svg)](https://codecov.io/gh/awestlake87/pyo3-asyncio)
-[![crates.io](https://img.shields.io/crates/v/pyo3-asyncio)](https://crates.io/crates/pyo3-asyncio)
+[![Actions Status](https://github.com/davidhewitt/pyo3-asyncio/workflows/CI/badge.svg)](https://github.com/davidhewitt/pyo3-asyncio/actions)
+[![codecov](https://codecov.io/gh/davidhewitt/pyo3-asyncio/branch/master/graph/badge.svg)](https://codecov.io/gh/davidhewitt/pyo3-asyncio)
+[![crates.io](https://img.shields.io/crates/v/pyo3-asyncio-0-21)](https://crates.io/crates/pyo3-asyncio-0-21)
 [![minimum rustc 1.63](https://img.shields.io/badge/rustc-1.63+-blue.svg)](https://rust-lang.github.io/rfcs/2495-min-rust-version.html)
+
+***This is a fork of [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21. This may be the base for a permanent fork in the future, depending on the status of the original `pyo3-asyncio` maintainer.***
 
 [Rust](http://www.rust-lang.org/) bindings for [Python](https://www.python.org/)'s [Asyncio Library](https://docs.python.org/3/library/asyncio.html). This crate facilitates interactions between Rust Futures and Python Coroutines and manages the lifecycle of their corresponding event loops.
 
@@ -11,9 +13,9 @@
 
 - PyO3 Asyncio API Documentation: [stable](https://docs.rs/pyo3-asyncio/) | [master](https://awestlake87.github.io/pyo3-asyncio/master/doc)
 
-- Guide for Async / Await [stable](https://pyo3.rs/v0.13.2/ecosystem/async-await.html) | [main](https://pyo3.rs/main/ecosystem/async-await.html)
+- Guide for Async / Await [stable](https://pyo3.rs/latest/ecosystem/async-await.html) | [main](https://pyo3.rs/main/ecosystem/async-await.html)
 
-- Contributing Notes: [github](https://github.com/awestlake87/pyo3-asyncio/blob/master/Contributing.md)
+- Contributing Notes: [github](https://github.com/davidhewitt/pyo3-asyncio/blob/master/Contributing.md)
 
 > PyO3 Asyncio is a _brand new_ part of the broader PyO3 ecosystem. Feel free to open any issues for feature requests or bugfixes for this crate.
 
@@ -29,7 +31,7 @@ Like PyO3, PyO3 Asyncio supports the following software versions:
 ## PyO3 Asyncio Primer
 
 If you are working with a Python library that makes use of async functions or wish to provide
-Python bindings for an async Rust library, [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio)
+Python bindings for an async Rust library, [`pyo3-asyncio`](https://github.com/davidhewitt/pyo3-asyncio)
 likely has the tools you need. It provides conversions between async functions in both Python and
 Rust and was designed with first-class support for popular Rust runtimes such as
 [`tokio`](https://tokio.rs/) and [`async-std`](https://async.rs/). In addition, all async Python
@@ -53,7 +55,7 @@ Here we initialize the runtime, import Python's `asyncio` library and run the gi
 # Cargo.toml dependencies
 [dependencies]
 pyo3 = { version = "0.20" }
-pyo3-asyncio = { version = "0.20", features = ["attributes", "async-std-runtime"] }
+pyo3-asyncio-0-21 = { version = "0.20", features = ["attributes", "async-std-runtime"] }
 async-std = "1.9"
 ```
 
@@ -62,12 +64,12 @@ async-std = "1.9"
 
 use pyo3::prelude::*;
 
-#[pyo3_asyncio::async_std::main]
+#[pyo3_asyncio_0_21::async_std::main]
 async fn main() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
         let asyncio = py.import_bound("asyncio")?;
         // convert asyncio.sleep into a Rust Future
-        pyo3_asyncio::async_std::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
+        pyo3_asyncio_0_21::async_std::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
     })?;
 
     fut.await?;
@@ -76,14 +78,14 @@ async fn main() -> PyResult<()> {
 }
 ```
 
-The same application can be written to use `tokio` instead using the `#[pyo3_asyncio::tokio::main]`
+The same application can be written to use `tokio` instead using the `#[pyo3_asyncio_0_21::tokio::main]`
 attribute.
 
 ```toml
 # Cargo.toml dependencies
 [dependencies]
 pyo3 = { version = "0.20" }
-pyo3-asyncio = { version = "0.20", features = ["attributes", "tokio-runtime"] }
+pyo3-asyncio-0-21 = { version = "0.20", features = ["attributes", "tokio-runtime"] }
 tokio = "1.9"
 ```
 
@@ -92,12 +94,12 @@ tokio = "1.9"
 
 use pyo3::prelude::*;
 
-#[pyo3_asyncio::tokio::main]
+#[pyo3_asyncio_0_21::tokio::main]
 async fn main() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
         let asyncio = py.import_bound("asyncio")?;
         // convert asyncio.sleep into a Rust Future
-        pyo3_asyncio::tokio::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
+        pyo3_asyncio_0_21::tokio::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
     })?;
 
     fut.await?;
@@ -128,7 +130,7 @@ For `async-std`:
 ```toml
 [dependencies]
 pyo3 = { version = "0.20", features = ["extension-module"] }
-pyo3-asyncio = { version = "0.20", features = ["async-std-runtime"] }
+pyo3-asyncio-0-21 = { version = "0.20", features = ["async-std-runtime"] }
 async-std = "1.9"
 ```
 
@@ -137,7 +139,7 @@ For `tokio`:
 ```toml
 [dependencies]
 pyo3 = { version = "0.20", features = ["extension-module"] }
-pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
+pyo3-asyncio-0-21 = { version = "0.20", features = ["tokio-runtime"] }
 tokio = "1.9"
 ```
 
@@ -150,7 +152,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 
 #[pyfunction]
 fn rust_sleep(py: Python) -> PyResult<Bound<PyAny>> {
-    pyo3_asyncio::async_std::future_into_py(py, async {
+    pyo3_asyncio_0_21::async_std::future_into_py(py, async {
         async_std::task::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())
     })
@@ -174,7 +176,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 
 #[pyfunction]
 fn rust_sleep(py: Python) -> PyResult<Bound<PyAny>> {
-    pyo3_asyncio::tokio::future_into_py(py, async {
+    pyo3_asyncio_0_21::tokio::future_into_py(py, async {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())
     })
@@ -227,13 +229,13 @@ to do something special with the object that it returns.
 Normally in Python, that something special is the `await` keyword, but in order to await this
 coroutine in Rust, we first need to convert it into Rust's version of a `coroutine`: a `Future`.
 That's where `pyo3-asyncio` comes in.
-[`pyo3_asyncio::into_future`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/fn.into_future.html)
+[`pyo3_asyncio_0_21::into_future`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/fn.into_future.html)
 performs this conversion for us:
 
 ```rust no_run
 use pyo3::prelude::*;
 
-#[pyo3_asyncio::tokio::main]
+#[pyo3_asyncio_0_21::tokio::main]
 async fn main() -> PyResult<()> {
     let future = Python::with_gil(|py| -> PyResult<_> {
         // import the module containing the py_sleep function
@@ -245,7 +247,7 @@ async fn main() -> PyResult<()> {
 
         // convert the coroutine into a Rust future using the
         // tokio runtime
-        pyo3_asyncio::tokio::into_future(coroutine)
+        pyo3_asyncio_0_21::tokio::into_future(coroutine)
     })?;
 
     // await the future
@@ -279,7 +281,7 @@ let future = rust_sleep();
 
 We can convert this `Future` object into Python to make it `awaitable`. This tells Python that you
 can use the `await` keyword with it. In order to do this, we'll call
-[`pyo3_asyncio::async_std::future_into_py`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/fn.future_into_py.html):
+[`pyo3_asyncio_0_21::async_std::future_into_py`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/fn.future_into_py.html):
 
 ```rust
 use pyo3::prelude::*;
@@ -290,7 +292,7 @@ async fn rust_sleep() {
 
 #[pyfunction]
 fn call_rust_sleep(py: Python) -> PyResult<Bound<PyAny>> {
-    pyo3_asyncio::async_std::future_into_py(py, async move {
+    pyo3_asyncio_0_21::async_std::future_into_py(py, async move {
         rust_sleep().await;
         Ok(())
     })
@@ -321,7 +323,7 @@ implementations _prefer_ control over the main thread, this can still make some 
 
 Because Python needs to control the main thread, we can't use the convenient proc macros from Rust
 runtimes to handle the `main` function or `#[test]` functions. Instead, the initialization for PyO3 has to be done from the `main` function and the main
-thread must block on [`pyo3_asyncio::run_forever`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/fn.run_forever.html) or [`pyo3_asyncio::async_std::run_until_complete`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/fn.run_until_complete.html).
+thread must block on [`pyo3_asyncio_0_21::run_forever`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/fn.run_forever.html) or [`pyo3_asyncio_0_21::async_std::run_until_complete`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/fn.run_until_complete.html).
 
 Because we have to block on one of those functions, we can't use [`#[async_std::main]`](https://docs.rs/async-std/latest/async_std/attr.main.html) or [`#[tokio::main]`](https://docs.rs/tokio/1.1.0/tokio/attr.main.html)
 since it's not a good idea to make long blocking calls during an async function.
@@ -351,7 +353,7 @@ Here's a full example of PyO3 initialization with the `async-std` runtime:
 ```rust no_run
 use pyo3::prelude::*;
 
-#[pyo3_asyncio::async_std::main]
+#[pyo3_asyncio_0_21::async_std::main]
 async fn main() -> PyResult<()> {
     // PyO3 is initialized - Ready to go
 
@@ -359,7 +361,7 @@ async fn main() -> PyResult<()> {
         let asyncio = py.import_bound("asyncio")?;
 
         // convert asyncio.sleep into a Rust Future
-        pyo3_asyncio::async_std::into_future(
+        pyo3_asyncio_0_21::async_std::into_future(
             asyncio.call_method1("sleep", (1.into_py(py),))?
         )
     })?;
@@ -432,7 +434,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.20", features = ["extension-module"] }
-pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
+pyo3-asyncio-0-21 = { version = "0.20", features = ["tokio-runtime"] }
 async-std = "1.9"
 tokio = "1.9"
 ```
@@ -444,7 +446,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 
 #[pyfunction]
 fn rust_sleep(py: Python) -> PyResult<Bound<PyAny>> {
-    pyo3_asyncio::tokio::future_into_py(py, async {
+    pyo3_asyncio_0_21::tokio::future_into_py(py, async {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())
     })
@@ -485,14 +487,14 @@ Type "help", "copyright", "credits" or "license" for more information.
 Using `uvloop` in Rust applications is a bit trickier, but it's still possible
 with relatively few modifications.
 
-Unfortunately, we can't make use of the `#[pyo3_asyncio::<runtime>::main]` attribute with non-standard event loops. This is because the `#[pyo3_asyncio::<runtime>::main]` proc macro has to interact with the Python
+Unfortunately, we can't make use of the `#[pyo3_asyncio_0_21::<runtime>::main]` attribute with non-standard event loops. This is because the `#[pyo3_asyncio_0_21::<runtime>::main]` proc macro has to interact with the Python
 event loop before we can install the `uvloop` policy.
 
 ```toml
 [dependencies]
 async-std = "1.9"
 pyo3 = "0.20"
-pyo3-asyncio = { version = "0.20", features = ["async-std-runtime"] }
+pyo3-asyncio-0-21 = { version = "0.20", features = ["async-std-runtime"] }
 ```
 
 ```rust no_run
@@ -510,7 +512,7 @@ fn main() -> PyResult<()> {
         // store a reference for the assertion
         let uvloop = PyObject::from(uvloop);
 
-        pyo3_asyncio::async_std::run(py, async move {
+        pyo3_asyncio_0_21::async_std::run(py, async move {
             // verify that we are on a uvloop.Loop
             Python::with_gil(|py| -> PyResult<()> {
                 assert!(uvloop
@@ -518,7 +520,7 @@ fn main() -> PyResult<()> {
                     .getattr("Loop")?
                     .downcast::<PyType>()
                     .unwrap()
-                    .is_instance(&pyo3_asyncio::async_std::get_current_loop(py)?)?);
+                    .is_instance(&pyo3_asyncio_0_21::async_std::get_current_loop(py)?)?);
                 Ok(())
             })?;
 
@@ -551,18 +553,18 @@ To make things a bit easier, I decided to keep most of the old API alongside the
 
 - Tokio initialization is now lazy.
   - No configuration necessary if you're using the multithreaded scheduler
-  - Calls to `pyo3_asyncio::tokio::init_multithread` or `pyo3_asyncio::tokio::init_multithread_once` can just be removed.
-  - Calls to `pyo3_asyncio::tokio::init_current_thread` or `pyo3_asyncio::tokio::init_current_thread_once` require some special attention.
-  - Custom runtime configuration is done by passing a `tokio::runtime::Builder` into `pyo3_asyncio::tokio::init` instead of a `tokio::runtime::Runtime`
+  - Calls to `pyo3_asyncio_0_21::tokio::init_multithread` or `pyo3_asyncio_0_21::tokio::init_multithread_once` can just be removed.
+  - Calls to `pyo3_asyncio_0_21::tokio::init_current_thread` or `pyo3_asyncio_0_21::tokio::init_current_thread_once` require some special attention.
+  - Custom runtime configuration is done by passing a `tokio::runtime::Builder` into `pyo3_asyncio_0_21::tokio::init` instead of a `tokio::runtime::Runtime`
 - A new, more correct set of functions has been added to replace the `v0.13` conversions.
-  - `pyo3_asyncio::into_future_with_loop`
-  - `pyo3_asyncio::<runtime>::future_into_py_with_loop`
-  - `pyo3_asyncio::<runtime>::local_future_into_py_with_loop`
-  - `pyo3_asyncio::<runtime>::into_future`
-  - `pyo3_asyncio::<runtime>::future_into_py`
-  - `pyo3_asyncio::<runtime>::local_future_into_py`
-  - `pyo3_asyncio::<runtime>::get_current_loop`
-- `pyo3_asyncio::try_init` is no longer required if you're only using `0.14` conversions
+  - `pyo3_asyncio_0_21::into_future_with_loop`
+  - `pyo3_asyncio_0_21::<runtime>::future_into_py_with_loop`
+  - `pyo3_asyncio_0_21::<runtime>::local_future_into_py_with_loop`
+  - `pyo3_asyncio_0_21::<runtime>::into_future`
+  - `pyo3_asyncio_0_21::<runtime>::future_into_py`
+  - `pyo3_asyncio_0_21::<runtime>::local_future_into_py`
+  - `pyo3_asyncio_0_21::<runtime>::get_current_loop`
+- `pyo3_asyncio_0_21::try_init` is no longer required if you're only using `0.14` conversions
 - The `ThreadPoolExecutor` is no longer configured automatically at the start.
   - Fortunately, this doesn't seem to have much effect on `v0.13` code, it just means that it's now possible to configure the executor manually as you see fit.
 
@@ -570,27 +572,27 @@ To make things a bit easier, I decided to keep most of the old API alongside the
 
 1. Fix PyO3 0.14 initialization.
    - PyO3 0.14 feature gated its automatic initialization behaviour behind "auto-initialize". You can either enable the "auto-initialize" behaviour in your project or add a call to `pyo3::prepare_freethreaded_python()` to the start of your program.
-   - If you're using the `#[pyo3_asyncio::<runtime>::main]` proc macro attributes, then you can skip this step. `#[pyo3_asyncio::<runtime>::main]` will call `pyo3::prepare_freethreaded_python()` at the start regardless of your project's "auto-initialize" feature.
+   - If you're using the `#[pyo3_asyncio_0_21::<runtime>::main]` proc macro attributes, then you can skip this step. `#[pyo3_asyncio_0_21::<runtime>::main]` will call `pyo3::prepare_freethreaded_python()` at the start regardless of your project's "auto-initialize" feature.
 2. Fix the tokio initialization.
 
-   - Calls to `pyo3_asyncio::tokio::init_multithread` or `pyo3_asyncio::tokio::init_multithread_once` can just be removed.
+   - Calls to `pyo3_asyncio_0_21::tokio::init_multithread` or `pyo3_asyncio_0_21::tokio::init_multithread_once` can just be removed.
    - If you're using the current thread scheduler, you'll need to manually spawn the thread that it runs on during initialization:
 
      ```rust no_run
      let mut builder = tokio::runtime::Builder::new_current_thread();
      builder.enable_all();
 
-     pyo3_asyncio::tokio::init(builder);
+     pyo3_asyncio_0_21::tokio::init(builder);
      std::thread::spawn(move || {
-         pyo3_asyncio::tokio::get_runtime().block_on(
+         pyo3_asyncio_0_21::tokio::get_runtime().block_on(
              futures::future::pending::<()>()
          );
      });
      ```
 
-   - Custom `tokio::runtime::Builder` configs can be passed into `pyo3_asyncio::tokio::init`. The `tokio::runtime::Runtime` will be lazily instantiated on the first call to `pyo3_asyncio::tokio::get_runtime()`
+   - Custom `tokio::runtime::Builder` configs can be passed into `pyo3_asyncio_0_21::tokio::init`. The `tokio::runtime::Runtime` will be lazily instantiated on the first call to `pyo3_asyncio_0_21::tokio::get_runtime()`
 
-3. If you're using `pyo3_asyncio::run_forever` in your application, you should switch to a more manual approach.
+3. If you're using `pyo3_asyncio_0_21::run_forever` in your application, you should switch to a more manual approach.
 
    > `run_forever` is not the recommended way of running an event loop in Python, so it might be a good idea to move away from it. This function would have needed to change for `0.14`, but since it's considered an edge case, it was decided that users could just manually call it if they need to.
 
@@ -608,7 +610,7 @@ To make things a bit easier, I decided to keep most of the old API alongside the
 
            let event_loop_hdl = PyObject::from(event_loop.clone());
 
-           pyo3_asyncio::tokio::get_runtime().spawn(async move {
+           pyo3_asyncio_0_21::tokio::get_runtime().spawn(async move {
                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
                // Stop the event loop manually
@@ -634,10 +636,10 @@ To make things a bit easier, I decided to keep most of the old API alongside the
 
 4. Replace conversions with their newer counterparts.
    > You may encounter some issues regarding the usage of `get_running_loop` vs `get_event_loop`. For more details on these newer conversions and how they should be used see [Event Loop References and ContextVars](https://awestlake87.github.io/pyo3-asyncio/master/doc/pyo3_asyncio/#event-loop-references-and-contextvars).
-   - Replace `pyo3_asyncio::into_future` with `pyo3_asyncio::<runtime>::into_future`
-   - Replace `pyo3_asyncio::<runtime>::into_coroutine` with `pyo3_asyncio::<runtime>::future_into_py`
-   - Replace `pyo3_asyncio::get_event_loop` with `pyo3_asyncio::<runtime>::get_current_loop`
-5. After all conversions have been replaced with their `v0.14` counterparts, `pyo3_asyncio::try_init` can safely be removed.
+   - Replace `pyo3_asyncio_0_21::into_future` with `pyo3_asyncio_0_21::<runtime>::into_future`
+   - Replace `pyo3_asyncio_0_21::<runtime>::into_coroutine` with `pyo3_asyncio_0_21::<runtime>::future_into_py`
+   - Replace `pyo3_asyncio_0_21::get_event_loop` with `pyo3_asyncio_0_21::<runtime>::get_current_loop`
+5. After all conversions have been replaced with their `v0.14` counterparts, `pyo3_asyncio_0_21::try_init` can safely be removed.
 
 > The `v0.13` API has been removed in version `v0.15`
 
@@ -656,17 +658,17 @@ There have been a few changes to the API in order to support proper cancellation
 
       // *_with_loop conversions in 0.14
       //
-      // let event_loop = pyo3_asyncio::get_running_loop(py)?;
+      // let event_loop = pyo3_asyncio_0_21::get_running_loop(py)?;
       //
-      // let fut = pyo3_asyncio::tokio::future_into_py_with_loop(
+      // let fut = pyo3_asyncio_0_21::tokio::future_into_py_with_loop(
       //     event_loop,
       //     async move { Ok(Python::with_gil(|py| py.None())) }
       // )?;
       //
       // should be replaced with *_with_locals in 0.15+
-      let fut = pyo3_asyncio::tokio::future_into_py_with_locals(
+      let fut = pyo3_asyncio_0_21::tokio::future_into_py_with_locals(
           py,
-          pyo3_asyncio::tokio::get_current_locals(py)?,
+          pyo3_asyncio_0_21::tokio::get_current_locals(py)?,
           async move { Ok(()) }
       )?;
 
@@ -674,7 +676,7 @@ There have been a few changes to the API in order to support proper cancellation
   });
   ```
 
-- `scope` and `scope_local` variants now accept `TaskLocals` instead of `event_loop`. You can usually just replace the `event_loop` with `pyo3_asyncio::TaskLocals::new(event_loop).copy_context(py)?`.
+- `scope` and `scope_local` variants now accept `TaskLocals` instead of `event_loop`. You can usually just replace the `event_loop` with `pyo3_asyncio_0_21::TaskLocals::new(event_loop).copy_context(py)?`.
 - Return types for `future_into_py`, `future_into_py_with_locals` `local_future_into_py`, and `local_future_into_py_with_locals` are now constrained by the bound `IntoPy<PyObject>` instead of requiring the return type to be `PyObject`. This can make the return types for futures more flexible, but inference can also fail when the concrete type is ambiguous (for example when using `into()`). Sometimes the `into()` can just be removed,
 - `run`, and `run_until_complete` can now return any `Send + 'static` value.
 
