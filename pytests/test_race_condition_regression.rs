@@ -4,7 +4,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 fn sleep<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
     let secs = secs.extract()?;
 
-    pyo3_asyncio_0_21::async_std::future_into_py(py, async move {
+    pyo3_async_runtimes::async_std::future_into_py(py, async move {
         async_std::task::sleep(std::time::Duration::from_secs_f64(secs)).await;
         Ok(())
     })

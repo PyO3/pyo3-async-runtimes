@@ -13,7 +13,7 @@ use syn::spanned::Spanned;
 /// # Examples
 ///
 /// ```ignore
-/// #[pyo3_asyncio_0_21::async_std::main]
+/// #[pyo3_async_runtimes::async_std::main]
 /// async fn main() -> PyResult<()> {
 ///     Ok(())
 /// }
@@ -52,7 +52,7 @@ pub fn async_std_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
             pyo3::prepare_freethreaded_python();
 
             pyo3::Python::with_gil(|py| {
-                pyo3_asyncio_0_21::async_std::run(py, main())
+                pyo3_async_runtimes::async_std::run(py, main())
                     .map_err(|e| {
                         e.print_and_set_sys_last_vars(py);
                     })
@@ -74,7 +74,7 @@ pub fn async_std_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Default configuration:
 /// ```ignore
-/// #[pyo3_asyncio_0_21::tokio::main]
+/// #[pyo3_async_runtimes::tokio::main]
 /// async fn main() -> PyResult<()> {
 ///     Ok(())
 /// }
@@ -82,7 +82,7 @@ pub fn async_std_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Current-thread scheduler:
 /// ```ignore
-/// #[pyo3_asyncio_0_21::tokio::main(flavor = "current_thread")]
+/// #[pyo3_async_runtimes::tokio::main(flavor = "current_thread")]
 /// async fn main() -> PyResult<()> {
 ///     Ok(())
 /// }
@@ -90,7 +90,7 @@ pub fn async_std_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Multi-thread scheduler with custom worker thread count:
 /// ```ignore
-/// #[pyo3_asyncio_0_21::tokio::main(flavor = "multi_thread", worker_threads = 10)]
+/// #[pyo3_async_runtimes::tokio::main(flavor = "multi_thread", worker_threads = 10)]
 /// async fn main() -> PyResult<()> {
 ///     Ok(())
 /// }
@@ -114,21 +114,21 @@ pub fn tokio_main(args: TokenStream, item: TokenStream) -> TokenStream {
 /// use pyo3::prelude::*;
 ///
 /// // async test function
-/// #[pyo3_asyncio_0_21::async_std::test]
+/// #[pyo3_async_runtimes::async_std::test]
 /// async fn test_async_sleep() -> PyResult<()> {
 ///     async_std::task::sleep(Duration::from_secs(1)).await;
 ///     Ok(())
 /// }
 ///
 /// // blocking test function
-/// #[pyo3_asyncio_0_21::async_std::test]
+/// #[pyo3_async_runtimes::async_std::test]
 /// fn test_blocking_sleep() -> PyResult<()> {
 ///     thread::sleep(Duration::from_secs(1));
 ///     Ok(())
 /// }
 ///
 /// // blocking test functions can optionally accept an event_loop parameter
-/// #[pyo3_asyncio_0_21::async_std::test]
+/// #[pyo3_async_runtimes::async_std::test]
 /// fn test_blocking_sleep_with_event_loop(event_loop: PyObject) -> PyResult<()> {
 ///     thread::sleep(Duration::from_secs(1));
 ///     Ok(())
@@ -148,16 +148,16 @@ pub fn async_std_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         // Optionally pass an event_loop parameter to blocking tasks
         let task = if sig.inputs.is_empty() {
             quote! {
-                Box::pin(pyo3_asyncio_0_21::async_std::re_exports::spawn_blocking(move || {
+                Box::pin(pyo3_async_runtimes::async_std::re_exports::spawn_blocking(move || {
                     #name()
                 }))
             }
         } else {
             quote! {
                 let event_loop = Python::with_gil(|py| {
-                    pyo3_asyncio_0_21::async_std::get_current_loop(py).unwrap().into()
+                    pyo3_async_runtimes::async_std::get_current_loop(py).unwrap().into()
                 });
-                Box::pin(pyo3_asyncio_0_21::async_std::re_exports::spawn_blocking(move || {
+                Box::pin(pyo3_async_runtimes::async_std::re_exports::spawn_blocking(move || {
                     #name(event_loop)
                 }))
             }
@@ -187,8 +187,8 @@ pub fn async_std_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let result = quote! {
         #fn_impl
 
-        pyo3_asyncio_0_21::inventory::submit! {
-            pyo3_asyncio_0_21::testing::Test {
+        pyo3_async_runtimes::inventory::submit! {
+            pyo3_async_runtimes::testing::Test {
                 name: concat!(std::module_path!(), "::", stringify!(#name)),
                 test_fn: &#name
             }
@@ -211,21 +211,21 @@ pub fn async_std_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// use pyo3::prelude::*;
 ///
 /// // async test function
-/// #[pyo3_asyncio_0_21::tokio::test]
+/// #[pyo3_async_runtimes::tokio::test]
 /// async fn test_async_sleep() -> PyResult<()> {
 ///     tokio::time::sleep(Duration::from_secs(1)).await;
 ///     Ok(())
 /// }
 ///
 /// // blocking test function
-/// #[pyo3_asyncio_0_21::tokio::test]
+/// #[pyo3_async_runtimes::tokio::test]
 /// fn test_blocking_sleep() -> PyResult<()> {
 ///     thread::sleep(Duration::from_secs(1));
 ///     Ok(())
 /// }
 ///
 /// // blocking test functions can optionally accept an event_loop parameter
-/// #[pyo3_asyncio_0_21::tokio::test]
+/// #[pyo3_async_runtimes::tokio::test]
 /// fn test_blocking_sleep_with_event_loop(event_loop: PyObject) -> PyResult<()> {
 ///     thread::sleep(Duration::from_secs(1));
 ///     Ok(())
@@ -246,7 +246,7 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let task = if sig.inputs.is_empty() {
             quote! {
                 Box::pin(async move {
-                    match pyo3_asyncio_0_21::tokio::get_runtime().spawn_blocking(move || #name()).await {
+                    match pyo3_async_runtimes::tokio::get_runtime().spawn_blocking(move || #name()).await {
                         Ok(result) => result,
                         Err(e) => {
                             assert!(e.is_panic());
@@ -258,7 +258,7 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                             } else {
                                 "unknown error".into()
                             };
-                            Err(pyo3_asyncio_0_21::err::RustPanic::new_err(format!("rust future panicked: {}", panic_message)))
+                            Err(pyo3_async_runtimes::err::RustPanic::new_err(format!("rust future panicked: {}", panic_message)))
                         }
                     }
                 })
@@ -266,10 +266,10 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         } else {
             quote! {
                 let event_loop = Python::with_gil(|py| {
-                    pyo3_asyncio_0_21::tokio::get_current_loop(py).unwrap().into()
+                    pyo3_async_runtimes::tokio::get_current_loop(py).unwrap().into()
                 });
                 Box::pin(async move {
-                    match pyo3_asyncio_0_21::tokio::get_runtime().spawn_blocking(move || #name(event_loop)).await {
+                    match pyo3_async_runtimes::tokio::get_runtime().spawn_blocking(move || #name(event_loop)).await {
                         Ok(result) => result,
                         Err(e) => {
                             assert!(e.is_panic());
@@ -281,7 +281,7 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                             } else {
                                 "unknown error".into()
                             };
-                            Err(pyo3_asyncio_0_21::err::RustPanic::new_err(format!("rust future panicked: {}", panic_message)))
+                            Err(pyo3_async_runtimes::err::RustPanic::new_err(format!("rust future panicked: {}", panic_message)))
                         }
                     }
                 })
@@ -312,8 +312,8 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let result = quote! {
         #fn_impl
 
-        pyo3_asyncio_0_21::inventory::submit! {
-            pyo3_asyncio_0_21::testing::Test {
+        pyo3_async_runtimes::inventory::submit! {
+            pyo3_async_runtimes::testing::Test {
                 name: concat!(std::module_path!(), "::", stringify!(#name)),
                 test_fn: &#name
             }

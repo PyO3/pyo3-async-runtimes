@@ -1,6 +1,6 @@
 [package]
-name = "pyo3-asyncio-macros-0-21"
-description = "Proc Macro Attributes for PyO3 Asyncio - 0.21 fork"
+name = "pyo3-async-runtimes-macros"
+description = "Proc Macro Attributes for `pyo3-async-runtimes`"
 version = "0.21.0"
 authors = [
     "Andrew J Westlake <awestlake87@yahoo.com>",
@@ -8,9 +8,9 @@ authors = [
 ]
 readme = "../README.md"
 keywords = ["pyo3", "python", "ffi", "async", "asyncio"]
-homepage = "https://github.com/davidhewitt/pyo3-asyncio"
-repository = "https://github.com/davidhewitt/pyo3-asyncio"
-documentation = "https://docs.rs/crate/pyo3-asyncio-0-21/"
+homepage = "https://github.com/PyO3/pyo3-async-runtimes"
+repository = "https://github.com/PyO3/pyo3-async-runtimes"
+documentation = "https://docs.rs/crate/pyo3-async-runtimes/"
 categories = ["api-bindings", "development-tools::ffi"]
 license = "Apache-2.0"
 edition = "2018"

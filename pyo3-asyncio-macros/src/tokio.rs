@@ -151,7 +151,7 @@ fn parse_knobs(
         return Err(syn::Error::new_spanned(sig.fn_token, msg));
     }
 
-    let macro_name = "pyo3_asyncio_0_21::tokio::main";
+    let macro_name = "pyo3_async_runtimes::tokio::main";
     let mut config = Configuration::new(is_test, rt_multi_thread);
 
     for arg in args {
@@ -221,10 +221,10 @@ fn parse_knobs(
 
     let builder = match config.flavor {
         RuntimeFlavor::CurrentThread => quote! {
-            pyo3_asyncio_0_21::tokio::re_exports::runtime::Builder::new_current_thread()
+            pyo3_async_runtimes::tokio::re_exports::runtime::Builder::new_current_thread()
         },
         RuntimeFlavor::Threaded => quote! {
-            pyo3_asyncio_0_21::tokio::re_exports::runtime::Builder::new_multi_thread()
+            pyo3_async_runtimes::tokio::re_exports::runtime::Builder::new_multi_thread()
         },
     };
 
@@ -240,8 +240,8 @@ fn parse_knobs(
 
     let rt_init = match config.flavor {
         RuntimeFlavor::CurrentThread => quote! {
-            std::thread::spawn(|| pyo3_asyncio_0_21::tokio::get_runtime().block_on(
-                pyo3_asyncio_0_21::tokio::re_exports::pending::<()>()
+            std::thread::spawn(|| pyo3_async_runtimes::tokio::get_runtime().block_on(
+                pyo3_async_runtimes::tokio::re_exports::pending::<()>()
             ));
         },
         _ => quote! {},
@@ -259,12 +259,12 @@ fn parse_knobs(
             let mut builder = #builder;
             #builder_init;
 
-            pyo3_asyncio_0_21::tokio::init(builder);
+            pyo3_async_runtimes::tokio::init(builder);
 
             #rt_init
 
             pyo3::Python::with_gil(|py| {
-                pyo3_asyncio_0_21::tokio::run(py, main())
+                pyo3_async_runtimes::tokio::run(py, main())
                     .map_err(|e| {
                         e.print_and_set_sys_last_vars(py);
                     })

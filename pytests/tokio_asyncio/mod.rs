@@ -9,7 +9,7 @@ use pyo3::{
     types::{IntoPyDict, PyType},
     wrap_pyfunction, wrap_pymodule,
 };
-use pyo3_asyncio_0_21::TaskLocals;
+use pyo3_async_runtimes::TaskLocals;
 
 #[cfg(feature = "unstable-streams")]
 use futures::{StreamExt, TryStreamExt};
@@ -20,13 +20,13 @@ use crate::common;
 fn sleep<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
     let secs = secs.extract()?;
 
-    pyo3_asyncio_0_21::tokio::future_into_py(py, async move {
+    pyo3_async_runtimes::tokio::future_into_py(py, async move {
         tokio::time::sleep(Duration::from_secs(secs)).await;
         Ok(())
     })
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 async fn test_future_into_py() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
         let sleeper_mod = PyModule::new_bound(py, "rust_sleeper")?;
@@ -40,7 +40,7 @@ async fn test_future_into_py() -> PyResult<()> {
             "test_future_into_py_mod",
         )?;
 
-        pyo3_asyncio_0_21::tokio::into_future(
+        pyo3_async_runtimes::tokio::into_future(
             test_mod.call_method1("sleep_for_1s", (sleeper_mod.getattr("sleep")?,))?,
         )
     })?;
@@ -50,7 +50,7 @@ async fn test_future_into_py() -> PyResult<()> {
     Ok(())
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 async fn test_async_sleep() -> PyResult<()> {
     let asyncio = Python::with_gil(|py| {
         py.import_bound("asyncio")
@@ -60,46 +60,46 @@ async fn test_async_sleep() -> PyResult<()> {
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     Python::with_gil(|py| {
-        pyo3_asyncio_0_21::tokio::into_future(asyncio.bind(py).call_method1("sleep", (1.0,))?)
+        pyo3_async_runtimes::tokio::into_future(asyncio.bind(py).call_method1("sleep", (1.0,))?)
     })?
     .await?;
 
     Ok(())
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 fn test_blocking_sleep() -> PyResult<()> {
     common::test_blocking_sleep()
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 async fn test_into_future() -> PyResult<()> {
     common::test_into_future(Python::with_gil(|py| {
-        pyo3_asyncio_0_21::tokio::get_current_loop(py)
+        pyo3_async_runtimes::tokio::get_current_loop(py)
             .unwrap()
             .into()
     }))
     .await
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 async fn test_other_awaitables() -> PyResult<()> {
     common::test_other_awaitables(Python::with_gil(|py| {
-        pyo3_asyncio_0_21::tokio::get_current_loop(py)
+        pyo3_async_runtimes::tokio::get_current_loop(py)
             .unwrap()
             .into()
     }))
     .await
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 fn test_local_future_into_py(event_loop: PyObject) -> PyResult<()> {
-    tokio::task::LocalSet::new().block_on(pyo3_asyncio_0_21::tokio::get_runtime(), async {
+    tokio::task::LocalSet::new().block_on(pyo3_async_runtimes::tokio::get_runtime(), async {
         Python::with_gil(|py| {
             let non_send_secs = Rc::new(1);
 
             #[allow(deprecated)]
-            let py_future = pyo3_asyncio_0_21::tokio::local_future_into_py_with_locals(
+            let py_future = pyo3_async_runtimes::tokio::local_future_into_py_with_locals(
                 py,
                 TaskLocals::new(event_loop.bind(py).clone()),
                 async move {
@@ -108,7 +108,7 @@ fn test_local_future_into_py(event_loop: PyObject) -> PyResult<()> {
                 },
             )?;
 
-            pyo3_asyncio_0_21::into_future_with_locals(
+            pyo3_async_runtimes::into_future_with_locals(
                 &TaskLocals::new(event_loop.into_bound(py)),
                 py_future,
             )
@@ -119,10 +119,10 @@ fn test_local_future_into_py(event_loop: PyObject) -> PyResult<()> {
     })
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 async fn test_panic() -> PyResult<()> {
     let fut = Python::with_gil(|py| -> PyResult<_> {
-        pyo3_asyncio_0_21::tokio::into_future(pyo3_asyncio_0_21::tokio::future_into_py::<_, ()>(
+        pyo3_async_runtimes::tokio::into_future(pyo3_async_runtimes::tokio::future_into_py::<_, ()>(
             py,
             async { panic!("this panic was intentional!") },
         )?)
@@ -131,7 +131,7 @@ async fn test_panic() -> PyResult<()> {
     match fut.await {
         Ok(_) => panic!("coroutine should panic"),
         Err(e) => Python::with_gil(|py| {
-            if e.is_instance_of::<pyo3_asyncio_0_21::err::RustPanic>(py) {
+            if e.is_instance_of::<pyo3_async_runtimes::err::RustPanic>(py) {
                 Ok(())
             } else {
                 panic!("expected RustPanic err")
@@ -140,13 +140,13 @@ async fn test_panic() -> PyResult<()> {
     }
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 async fn test_cancel() -> PyResult<()> {
     let completed = Arc::new(Mutex::new(false));
 
     let py_future = Python::with_gil(|py| -> PyResult<PyObject> {
         let completed = Arc::clone(&completed);
-        Ok(pyo3_asyncio_0_21::tokio::future_into_py(py, async move {
+        Ok(pyo3_async_runtimes::tokio::future_into_py(py, async move {
             tokio::time::sleep(Duration::from_secs(1)).await;
             *completed.lock().unwrap() = true;
 
@@ -157,7 +157,7 @@ async fn test_cancel() -> PyResult<()> {
 
     if let Err(e) = Python::with_gil(|py| -> PyResult<_> {
         py_future.bind(py).call_method0("cancel")?;
-        pyo3_asyncio_0_21::tokio::into_future(py_future.into_bound(py))
+        pyo3_async_runtimes::tokio::into_future(py_future.into_bound(py))
     })?
     .await
     {
@@ -182,7 +182,7 @@ async fn test_cancel() -> PyResult<()> {
     Ok(())
 }
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 #[allow(deprecated)]
 fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
     let locals = Python::with_gil(|py| -> PyResult<TaskLocals> {
@@ -190,15 +190,15 @@ fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
     })?;
 
     tokio::task::LocalSet::new().block_on(
-        pyo3_asyncio_0_21::tokio::get_runtime(),
-        pyo3_asyncio_0_21::tokio::scope_local(locals, async {
+        pyo3_async_runtimes::tokio::get_runtime(),
+        pyo3_async_runtimes::tokio::scope_local(locals, async {
             let completed = Arc::new(Mutex::new(false));
             let py_future = Python::with_gil(|py| -> PyResult<PyObject> {
                 let completed = Arc::clone(&completed);
 
                 #[allow(deprecated)]
                 Ok(
-                    pyo3_asyncio_0_21::tokio::local_future_into_py(py, async move {
+                    pyo3_async_runtimes::tokio::local_future_into_py(py, async move {
                         tokio::time::sleep(Duration::from_secs(1)).await;
                         *completed.lock().unwrap() = true;
                         Ok(())
@@ -209,7 +209,7 @@ fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
 
             if let Err(e) = Python::with_gil(|py| -> PyResult<_> {
                 py_future.bind(py).call_method0("cancel")?;
-                pyo3_asyncio_0_21::tokio::into_future(py_future.into_bound(py))
+                pyo3_async_runtimes::tokio::into_future(py_future.into_bound(py))
             })?
             .await
             {
@@ -243,7 +243,7 @@ fn test_mod(_py: Python, m: &PyModule) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction(name = "sleep")]
     fn sleep_(py: Python) -> PyResult<Bound<PyAny>> {
-        pyo3_asyncio_0_21::tokio::future_into_py(py, async move {
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
             tokio::time::sleep(Duration::from_millis(500)).await;
             Ok(())
         })
@@ -261,14 +261,14 @@ async def main():
 asyncio.new_event_loop().run_until_complete(main())
 "#;
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 fn test_multiple_asyncio_run() -> PyResult<()> {
     Python::with_gil(|py| {
-        pyo3_asyncio_0_21::tokio::run(py, async move {
+        pyo3_async_runtimes::tokio::run(py, async move {
             tokio::time::sleep(Duration::from_millis(500)).await;
             Ok(())
         })?;
-        pyo3_asyncio_0_21::tokio::run(py, async move {
+        pyo3_async_runtimes::tokio::run(py, async move {
             tokio::time::sleep(Duration::from_millis(500)).await;
             Ok(())
         })?;
@@ -290,9 +290,9 @@ fn cvars_mod(_py: Python, m: &PyModule) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction]
     fn async_callback(py: Python, callback: PyObject) -> PyResult<Bound<PyAny>> {
-        pyo3_asyncio_0_21::tokio::future_into_py(py, async move {
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
             Python::with_gil(|py| {
-                pyo3_asyncio_0_21::tokio::into_future(callback.bind(py).call0()?)
+                pyo3_async_runtimes::tokio::into_future(callback.bind(py).call0()?)
             })?
             .await?;
 
@@ -316,7 +316,7 @@ async def gen():
 "#;
 
 #[cfg(feature = "unstable-streams")]
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 async fn test_async_gen_v1() -> PyResult<()> {
     let stream = Python::with_gil(|py| {
         let test_mod = PyModule::from_code_bound(
@@ -326,7 +326,7 @@ async fn test_async_gen_v1() -> PyResult<()> {
             "tokio_test_mod",
         )?;
 
-        pyo3_asyncio_0_21::tokio::into_stream_v1(test_mod.call_method0("gen")?)
+        pyo3_async_runtimes::tokio::into_stream_v1(test_mod.call_method0("gen")?)
     })?;
 
     let vals = stream
@@ -340,7 +340,7 @@ async fn test_async_gen_v1() -> PyResult<()> {
 }
 
 #[cfg(feature = "unstable-streams")]
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 async fn test_async_gen_v2() -> PyResult<()> {
     let stream = Python::with_gil(|py| {
         let test_mod = PyModule::from_code_bound(
@@ -350,7 +350,7 @@ async fn test_async_gen_v2() -> PyResult<()> {
             "tokio_test_mod",
         )?;
 
-        pyo3_asyncio_0_21::tokio::into_stream_v2(test_mod.call_method0("gen")?)
+        pyo3_async_runtimes::tokio::into_stream_v2(test_mod.call_method0("gen")?)
     })?;
 
     let vals = stream
@@ -376,7 +376,7 @@ async def main():
 asyncio.run(main())
 "#;
 
-#[pyo3_asyncio_0_21::tokio::test]
+#[pyo3_async_runtimes::tokio::test]
 fn test_contextvars() -> PyResult<()> {
     Python::with_gil(|py| {
         let d = [

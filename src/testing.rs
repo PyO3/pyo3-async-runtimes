@@ -9,8 +9,8 @@
 //!
 //! Running `pyo3-asyncio` code in doc tests _is_ supported however since each doc test has its own
 //! `main` function. When writing doc tests, you may use the
-//! [`#[pyo3_asyncio_0_21::async_std::main]`](crate::async_std::main) or
-//! [`#[pyo3_asyncio_0_21::tokio::main]`](crate::tokio::main) macros on the test's main function to run
+//! [`#[pyo3_async_runtimes::async_std::main]`](crate::async_std::main) or
+//! [`#[pyo3_async_runtimes::tokio::main]`](crate::tokio::main) macros on the test's main function to run
 //! your test.
 //!
 //! If you don't want to write doc tests, you're unfortunately stuck with integration tests since
@@ -26,14 +26,14 @@
 //! > The name `pytests` is just a convention. You can name this folder anything you want in your own
 //! > projects.
 //!
-//! We'll also want to provide the test's main function. Most of the functionality that the test harness needs is packed in the [`pyo3_asyncio_0_21::testing::main`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/testing/fn.main.html) function. This function will parse the test's CLI arguments, collect and pass the functions marked with [`#[pyo3_asyncio_0_21::async_std::test]`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/attr.test.html) or [`#[pyo3_asyncio_0_21::tokio::test]`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/tokio/attr.test.html) and pass them into the test harness for running and filtering.
+//! We'll also want to provide the test's main function. Most of the functionality that the test harness needs is packed in the [`pyo3_async_runtimes::testing::main`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/testing/fn.main.html) function. This function will parse the test's CLI arguments, collect and pass the functions marked with [`#[pyo3_async_runtimes::async_std::test]`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/attr.test.html) or [`#[pyo3_async_runtimes::tokio::test]`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/tokio/attr.test.html) and pass them into the test harness for running and filtering.
 //!
 //! `pytests/test_example.rs` for the `tokio` runtime:
 //! ```rust
 //! # #[cfg(all(feature = "tokio-runtime", feature = "attributes"))]
-//! #[pyo3_asyncio_0_21::tokio::main]
+//! #[pyo3_async_runtimes::tokio::main]
 //! async fn main() -> pyo3::PyResult<()> {
-//!     pyo3_asyncio_0_21::testing::main().await
+//!     pyo3_async_runtimes::testing::main().await
 //! }
 //! # #[cfg(not(all(feature = "tokio-runtime", feature = "attributes")))]
 //! # fn main() {}
@@ -42,9 +42,9 @@
 //! `pytests/test_example.rs` for the `async-std` runtime:
 //! ```rust
 //! # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
-//! #[pyo3_asyncio_0_21::async_std::main]
+//! #[pyo3_async_runtimes::async_std::main]
 //! async fn main() -> pyo3::PyResult<()> {
-//!     pyo3_asyncio_0_21::testing::main().await
+//!     pyo3_async_runtimes::testing::main().await
 //! }
 //! # #[cfg(not(all(feature = "async-std-runtime", feature = "attributes")))]
 //! # fn main() {}
@@ -73,7 +73,7 @@
 //!
 //! We can add tests anywhere in the test crate with the runtime's corresponding `#[test]` attribute:
 //!
-//! For `async-std` use the [`pyo3_asyncio_0_21::async_std::test`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/attr.test.html) attribute:
+//! For `async-std` use the [`pyo3_async_runtimes::async_std::test`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/attr.test.html) attribute:
 //! ```rust
 //! # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
 //! mod tests {
@@ -82,14 +82,14 @@
 //!     use pyo3::prelude::*;
 //!
 //!     // tests can be async
-//!     #[pyo3_asyncio_0_21::async_std::test]
+//!     #[pyo3_async_runtimes::async_std::test]
 //!     async fn test_async_sleep() -> PyResult<()> {
 //!         async_std::task::sleep(Duration::from_secs(1)).await;
 //!         Ok(())
 //!     }
 //!
 //!     // they can also be synchronous
-//!     #[pyo3_asyncio_0_21::async_std::test]
+//!     #[pyo3_async_runtimes::async_std::test]
 //!     fn test_blocking_sleep() -> PyResult<()> {
 //!         thread::sleep(Duration::from_secs(1));
 //!         Ok(())
@@ -97,15 +97,15 @@
 //! }
 //!
 //! # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
-//! #[pyo3_asyncio_0_21::async_std::main]
+//! #[pyo3_async_runtimes::async_std::main]
 //! async fn main() -> pyo3::PyResult<()> {
-//!     pyo3_asyncio_0_21::testing::main().await
+//!     pyo3_async_runtimes::testing::main().await
 //! }
 //! # #[cfg(not(all(feature = "async-std-runtime", feature = "attributes")))]
 //! # fn main() {}
 //! ```
 //!
-//! For `tokio` use the [`pyo3_asyncio_0_21::tokio::test`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/tokio/attr.test.html) attribute:
+//! For `tokio` use the [`pyo3_async_runtimes::tokio::test`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/tokio/attr.test.html) attribute:
 //! ```rust
 //! # #[cfg(all(feature = "tokio-runtime", feature = "attributes"))]
 //! mod tests {
@@ -114,14 +114,14 @@
 //!     use pyo3::prelude::*;
 //!
 //!     // tests can be async
-//!     #[pyo3_asyncio_0_21::tokio::test]
+//!     #[pyo3_async_runtimes::tokio::test]
 //!     async fn test_async_sleep() -> PyResult<()> {
 //!         tokio::time::sleep(Duration::from_secs(1)).await;
 //!         Ok(())
 //!     }
 //!
 //!     // they can also be synchronous
-//!     #[pyo3_asyncio_0_21::tokio::test]
+//!     #[pyo3_async_runtimes::tokio::test]
 //!     fn test_blocking_sleep() -> PyResult<()> {
 //!         thread::sleep(Duration::from_secs(1));
 //!         Ok(())
@@ -129,9 +129,9 @@
 //! }
 //!
 //! # #[cfg(all(feature = "tokio-runtime", feature = "attributes"))]
-//! #[pyo3_asyncio_0_21::tokio::main]
+//! #[pyo3_async_runtimes::tokio::main]
 //! async fn main() -> pyo3::PyResult<()> {
-//!     pyo3_asyncio_0_21::testing::main().await
+//!     pyo3_async_runtimes::testing::main().await
 //! }
 //! # #[cfg(not(all(feature = "tokio-runtime", feature = "attributes")))]
 //! # fn main() {}
@@ -154,23 +154,23 @@
 //!     use pyo3::prelude::*;
 //!
 //! #   #[cfg(feature = "async-std-runtime")]
-//!     #[pyo3_asyncio_0_21::async_std::test]
+//!     #[pyo3_async_runtimes::async_std::test]
 //!     async fn test_async_std_async_test_compiles() -> PyResult<()> {
 //!         Ok(())
 //!     }
 //! #   #[cfg(feature = "async-std-runtime")]
-//!     #[pyo3_asyncio_0_21::async_std::test]
+//!     #[pyo3_async_runtimes::async_std::test]
 //!     fn test_async_std_sync_test_compiles() -> PyResult<()> {
 //!         Ok(())
 //!     }
 //!
 //! #   #[cfg(feature = "tokio-runtime")]
-//!     #[pyo3_asyncio_0_21::tokio::test]
+//!     #[pyo3_async_runtimes::tokio::test]
 //!     async fn test_tokio_async_test_compiles() -> PyResult<()> {
 //!         Ok(())
 //!     }
 //! #   #[cfg(feature = "tokio-runtime")]
-//!     #[pyo3_asyncio_0_21::tokio::test]
+//!     #[pyo3_async_runtimes::tokio::test]
 //!     fn test_tokio_sync_test_compiles() -> PyResult<()> {
 //!         Ok(())
 //!     }
@@ -213,7 +213,7 @@ impl Default for Args {
 ///
 /// Running the following function:
 /// ```
-/// # use pyo3_asyncio_0_21::testing::parse_args;
+/// # use pyo3_async_runtimes::testing::parse_args;
 /// let args = parse_args();
 /// ```
 ///
@@ -305,9 +305,9 @@ pub async fn test_harness(tests: Vec<Test>, args: Args) -> PyResult<()> {
 /// use pyo3::prelude::*;
 ///
 /// # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
-/// #[pyo3_asyncio_0_21::async_std::main]
+/// #[pyo3_async_runtimes::async_std::main]
 /// async fn main() -> PyResult<()> {
-///     pyo3_asyncio_0_21::testing::main().await
+///     pyo3_async_runtimes::testing::main().await
 /// }
 /// # #[cfg(not(all(feature = "async-std-runtime", feature = "attributes")))]
 /// # fn main() { }
@@ -331,26 +331,26 @@ pub async fn main() -> PyResult<()> {
 mod tests {
     use pyo3::prelude::*;
 
-    use crate as pyo3_asyncio_0_21;
+    use crate as pyo3_async_runtimes;
 
     #[cfg(feature = "async-std-runtime")]
-    #[pyo3_asyncio_0_21::async_std::test]
+    #[pyo3_async_runtimes::async_std::test]
     async fn test_async_std_async_test_compiles() -> PyResult<()> {
         Ok(())
     }
     #[cfg(feature = "async-std-runtime")]
-    #[pyo3_asyncio_0_21::async_std::test]
+    #[pyo3_async_runtimes::async_std::test]
     fn test_async_std_sync_test_compiles() -> PyResult<()> {
         Ok(())
     }
 
     #[cfg(feature = "tokio-runtime")]
-    #[pyo3_asyncio_0_21::tokio::test]
+    #[pyo3_async_runtimes::tokio::test]
     async fn test_tokio_async_test_compiles() -> PyResult<()> {
         Ok(())
     }
     #[cfg(feature = "tokio-runtime")]
-    #[pyo3_asyncio_0_21::tokio::test]
+    #[pyo3_async_runtimes::tokio::test]
     fn test_tokio_sync_test_compiles() -> PyResult<()> {
         Ok(())
     }

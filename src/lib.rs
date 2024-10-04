@@ -72,10 +72,10 @@
 //! context if necessary. The following conversions will use these references to perform the
 //! necessary conversions and restore Python context when needed:
 //!
-//! - `pyo3_asyncio_0_21::into_future_with_locals` - Convert a Python awaitable into a Rust future.
-//! - `pyo3_asyncio_0_21::<runtime>::future_into_py_with_locals` - Convert a Rust future into a Python
+//! - `pyo3_async_runtimes::into_future_with_locals` - Convert a Python awaitable into a Rust future.
+//! - `pyo3_async_runtimes::<runtime>::future_into_py_with_locals` - Convert a Rust future into a Python
 //! awaitable.
-//! - `pyo3_asyncio_0_21::<runtime>::local_future_into_py_with_locals` - Convert a `!Send` Rust future
+//! - `pyo3_async_runtimes::<runtime>::local_future_into_py_with_locals` - Convert a `!Send` Rust future
 //! into a Python awaitable.
 //!
 //! One clear disadvantage to this approach is that the Rust application has to explicitly track
@@ -90,15 +90,15 @@
 //! #[pyfunction]
 //! fn sleep(py: Python) -> PyResult<Bound<PyAny>> {
 //!     // Construct the task locals structure with the current running loop and context
-//!     let locals = pyo3_asyncio_0_21::TaskLocals::with_running_loop(py)?.copy_context(py)?;
+//!     let locals = pyo3_async_runtimes::TaskLocals::with_running_loop(py)?.copy_context(py)?;
 //!
 //!     // Convert the async move { } block to a Python awaitable
-//!     pyo3_asyncio_0_21::tokio::future_into_py_with_locals(py, locals.clone(), async move {
+//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone(), async move {
 //!         let py_sleep = Python::with_gil(|py| {
 //!             // Sometimes we need to call other async Python functions within
 //!             // this future. In order for this to work, we need to track the
 //!             // event loop from earlier.
-//!             pyo3_asyncio_0_21::into_future_with_locals(
+//!             pyo3_async_runtimes::into_future_with_locals(
 //!                 &locals,
 //!                 py.import_bound("asyncio")?.call_method1("sleep", (1,))?
 //!             )
@@ -136,7 +136,7 @@
 //! associated with the current thread. What we need in Rust is something that can retrieve the
 //! Python event loop and contextvars associated with the current Rust _task_.
 //!
-//! Enter `pyo3_asyncio_0_21::<runtime>::get_current_locals`. This function first checks task-local data
+//! Enter `pyo3_async_runtimes::<runtime>::get_current_locals`. This function first checks task-local data
 //! for the `TaskLocals`, then falls back on `asyncio.get_running_loop` and
 //! `contextvars.copy_context` if no task locals are found. This way both bases are
 //! covered.
@@ -144,8 +144,8 @@
 //! Now, all we need is a way to store the `TaskLocals` for the Rust future. Since this is a
 //! runtime-specific feature, you can find the following functions in each runtime module:
 //!
-//! - `pyo3_asyncio_0_21::<runtime>::scope` - Store the task-local data when executing the given Future.
-//! - `pyo3_asyncio_0_21::<runtime>::scope_local` - Store the task-local data when executing the given
+//! - `pyo3_async_runtimes::<runtime>::scope` - Store the task-local data when executing the given Future.
+//! - `pyo3_async_runtimes::<runtime>::scope_local` - Store the task-local data when executing the given
 //! `!Send` Future.
 //!
 //! With these new functions, we can make our previous example more correct:
@@ -158,17 +158,17 @@
 //! fn sleep(py: Python) -> PyResult<Bound<PyAny>> {
 //!     // get the current event loop through task-local data
 //!     // OR `asyncio.get_running_loop` and `contextvars.copy_context`
-//!     let locals = pyo3_asyncio_0_21::tokio::get_current_locals(py)?;
+//!     let locals = pyo3_async_runtimes::tokio::get_current_locals(py)?;
 //!
-//!     pyo3_asyncio_0_21::tokio::future_into_py_with_locals(
+//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
 //!         locals.clone(),
 //!         // Store the current locals in task-local data
-//!         pyo3_asyncio_0_21::tokio::scope(locals.clone(), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
 //!             let py_sleep = Python::with_gil(|py| {
-//!                 pyo3_asyncio_0_21::into_future_with_locals(
+//!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     // Now we can get the current locals through task-local data
-//!                     &pyo3_asyncio_0_21::tokio::get_current_locals(py)?,
+//!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
 //!                     py.import_bound("asyncio")?.call_method1("sleep", (1,))?
 //!                 )
 //!             })?;
@@ -185,16 +185,16 @@
 //! fn wrap_sleep(py: Python) -> PyResult<Bound<PyAny>> {
 //!     // get the current event loop through task-local data
 //!     // OR `asyncio.get_running_loop` and `contextvars.copy_context`
-//!     let locals = pyo3_asyncio_0_21::tokio::get_current_locals(py)?;
+//!     let locals = pyo3_async_runtimes::tokio::get_current_locals(py)?;
 //!
-//!     pyo3_asyncio_0_21::tokio::future_into_py_with_locals(
+//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
 //!         locals.clone(),
 //!         // Store the current locals in task-local data
-//!         pyo3_asyncio_0_21::tokio::scope(locals.clone(), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
 //!             let py_sleep = Python::with_gil(|py| {
-//!                 pyo3_asyncio_0_21::into_future_with_locals(
-//!                     &pyo3_asyncio_0_21::tokio::get_current_locals(py)?,
+//!                 pyo3_async_runtimes::into_future_with_locals(
+//!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
 //!                     // We can also call sleep within a Rust task since the
 //!                     // locals are stored in task local data
 //!                     sleep(py)?
@@ -220,16 +220,16 @@
 //! Even though this is more correct, it's clearly not more ergonomic. That's why we introduced a
 //! set of functions with this functionality baked in:
 //!
-//! - `pyo3_asyncio_0_21::<runtime>::into_future`
+//! - `pyo3_async_runtimes::<runtime>::into_future`
 //!   > Convert a Python awaitable into a Rust future (using
-//!   `pyo3_asyncio_0_21::<runtime>::get_current_locals`)
-//! - `pyo3_asyncio_0_21::<runtime>::future_into_py`
+//!   `pyo3_async_runtimes::<runtime>::get_current_locals`)
+//! - `pyo3_async_runtimes::<runtime>::future_into_py`
 //!   > Convert a Rust future into a Python awaitable (using
-//!   `pyo3_asyncio_0_21::<runtime>::get_current_locals` and `pyo3_asyncio_0_21::<runtime>::scope` to set the
+//!   `pyo3_async_runtimes::<runtime>::get_current_locals` and `pyo3_async_runtimes::<runtime>::scope` to set the
 //!   task-local event loop for the given Rust future)
-//! - `pyo3_asyncio_0_21::<runtime>::local_future_into_py`
+//! - `pyo3_async_runtimes::<runtime>::local_future_into_py`
 //!   > Convert a `!Send` Rust future into a Python awaitable (using
-//!   `pyo3_asyncio_0_21::<runtime>::get_current_locals` and `pyo3_asyncio_0_21::<runtime>::scope_local` to
+//!   `pyo3_async_runtimes::<runtime>::get_current_locals` and `pyo3_async_runtimes::<runtime>::scope_local` to
 //!   set the task-local event loop for the given Rust future).
 //!
 //! __These are the functions that we recommend using__. With these functions, the previous example
@@ -241,9 +241,9 @@
 //! # #[cfg(feature = "tokio-runtime")]
 //! #[pyfunction]
 //! fn sleep(py: Python) -> PyResult<Bound<PyAny>> {
-//!     pyo3_asyncio_0_21::tokio::future_into_py(py, async move {
+//!     pyo3_async_runtimes::tokio::future_into_py(py, async move {
 //!         let py_sleep = Python::with_gil(|py| {
-//!             pyo3_asyncio_0_21::tokio::into_future(
+//!             pyo3_async_runtimes::tokio::into_future(
 //!                 py.import_bound("asyncio")?.call_method1("sleep", (1,))?
 //!             )
 //!         })?;
@@ -257,9 +257,9 @@
 //! # #[cfg(feature = "tokio-runtime")]
 //! #[pyfunction]
 //! fn wrap_sleep(py: Python) -> PyResult<Bound<PyAny>> {
-//!     pyo3_asyncio_0_21::tokio::future_into_py(py, async move {
+//!     pyo3_async_runtimes::tokio::future_into_py(py, async move {
 //!         let py_sleep = Python::with_gil(|py| {
-//!             pyo3_asyncio_0_21::tokio::into_future(sleep(py)?)
+//!             pyo3_async_runtimes::tokio::into_future(sleep(py)?)
 //!         })?;
 //!
 //!         py_sleep.await?;
@@ -621,8 +621,8 @@ fn call_soon_threadsafe(
 ///     })?;
 ///
 ///     Python::with_gil(|py| {
-///         pyo3_asyncio_0_21::into_future_with_locals(
-///             &pyo3_asyncio_0_21::tokio::get_current_locals(py)?,
+///         pyo3_async_runtimes::into_future_with_locals(
+///             &pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///             test_mod
 ///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
 ///                 .into_bound(py),

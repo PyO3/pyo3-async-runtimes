@@ -220,7 +220,7 @@ fn multi_thread() -> Builder {
 /// # pyo3::prepare_freethreaded_python();
 /// # Python::with_gil(|py| -> PyResult<()> {
 /// # let event_loop = py.import_bound("asyncio")?.call_method0("new_event_loop")?;
-/// pyo3_asyncio_0_21::tokio::run_until_complete(event_loop, async move {
+/// pyo3_async_runtimes::tokio::run_until_complete(event_loop, async move {
 ///     tokio::time::sleep(Duration::from_secs(1)).await;
 ///     Ok(())
 /// })?;
@@ -250,7 +250,7 @@ where
 /// #
 /// fn main() {
 ///     Python::with_gil(|py| {
-///         pyo3_asyncio_0_21::tokio::run(py, async move {
+///         pyo3_async_runtimes::tokio::run(py, async move {
 ///             tokio::time::sleep(Duration::from_secs(1)).await;
 ///             Ok(())
 ///         })
@@ -302,9 +302,9 @@ where
 /// #[pyfunction]
 /// fn sleep_for<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
 ///     let secs = secs.extract()?;
-///     pyo3_asyncio_0_21::tokio::future_into_py_with_locals(
+///     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 ///         py,
-///         pyo3_asyncio_0_21::tokio::get_current_locals(py)?,
+///         pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///         async move {
 ///             tokio::time::sleep(Duration::from_secs(secs)).await;
 ///             Python::with_gil(|py| Ok(py.None()))
@@ -356,7 +356,7 @@ where
 /// #[pyfunction]
 /// fn sleep_for<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
 ///     let secs = secs.extract()?;
-///     pyo3_asyncio_0_21::tokio::future_into_py(py, async move {
+///     pyo3_async_runtimes::tokio::future_into_py(py, async move {
 ///         tokio::time::sleep(Duration::from_secs(secs)).await;
 ///         Ok(())
 ///     })
@@ -402,12 +402,12 @@ where
 /// /// Awaitable non-send sleep function
 /// #[pyfunction]
 /// fn sleep_for(py: Python, secs: u64) -> PyResult<Bound<PyAny>> {
-///     // Rc is non-send so it cannot be passed into pyo3_asyncio_0_21::tokio::future_into_py
+///     // Rc is non-send so it cannot be passed into pyo3_async_runtimes::tokio::future_into_py
 ///     let secs = Rc::new(secs);
 ///
-///     pyo3_asyncio_0_21::tokio::local_future_into_py_with_locals(
+///     pyo3_async_runtimes::tokio::local_future_into_py_with_locals(
 ///         py,
-///         pyo3_asyncio_0_21::tokio::get_current_locals(py)?,
+///         pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///         async move {
 ///             tokio::time::sleep(Duration::from_secs(*secs)).await;
 ///             Python::with_gil(|py| Ok(py.None()))
@@ -416,23 +416,23 @@ where
 /// }
 ///
 /// # #[cfg(all(feature = "tokio-runtime", feature = "attributes"))]
-/// #[pyo3_asyncio_0_21::tokio::main]
+/// #[pyo3_async_runtimes::tokio::main]
 /// async fn main() -> PyResult<()> {
 ///     let locals = Python::with_gil(|py| -> PyResult<_> {
-///         pyo3_asyncio_0_21::tokio::get_current_locals(py)
+///         pyo3_async_runtimes::tokio::get_current_locals(py)
 ///     })?;
 ///
 ///     // the main coroutine is running in a Send context, so we cannot use LocalSet here. Instead
 ///     // we use spawn_blocking in order to use LocalSet::block_on
 ///     tokio::task::spawn_blocking(move || {
 ///         // LocalSet allows us to work with !Send futures within tokio. Without it, any calls to
-///         // pyo3_asyncio_0_21::tokio::local_future_into_py will panic.
+///         // pyo3_async_runtimes::tokio::local_future_into_py will panic.
 ///         tokio::task::LocalSet::new().block_on(
-///             pyo3_asyncio_0_21::tokio::get_runtime(),
-///             pyo3_asyncio_0_21::tokio::scope_local(locals, async {
+///             pyo3_async_runtimes::tokio::get_runtime(),
+///             pyo3_async_runtimes::tokio::scope_local(locals, async {
 ///                 Python::with_gil(|py| {
 ///                     let py_future = sleep_for(py, 1)?;
-///                     pyo3_asyncio_0_21::tokio::into_future(py_future)
+///                     pyo3_async_runtimes::tokio::into_future(py_future)
 ///                 })?
 ///                 .await?;
 ///
@@ -492,32 +492,32 @@ where
 /// /// Awaitable non-send sleep function
 /// #[pyfunction]
 /// fn sleep_for(py: Python, secs: u64) -> PyResult<Bound<PyAny>> {
-///     // Rc is non-send so it cannot be passed into pyo3_asyncio_0_21::tokio::future_into_py
+///     // Rc is non-send so it cannot be passed into pyo3_async_runtimes::tokio::future_into_py
 ///     let secs = Rc::new(secs);
-///     pyo3_asyncio_0_21::tokio::local_future_into_py(py, async move {
+///     pyo3_async_runtimes::tokio::local_future_into_py(py, async move {
 ///         tokio::time::sleep(Duration::from_secs(*secs)).await;
 ///         Ok(())
 ///     })
 /// }
 ///
 /// # #[cfg(all(feature = "tokio-runtime", feature = "attributes"))]
-/// #[pyo3_asyncio_0_21::tokio::main]
+/// #[pyo3_async_runtimes::tokio::main]
 /// async fn main() -> PyResult<()> {
 ///     let locals = Python::with_gil(|py| {
-///         pyo3_asyncio_0_21::tokio::get_current_locals(py).unwrap()
+///         pyo3_async_runtimes::tokio::get_current_locals(py).unwrap()
 ///     });
 ///
 ///     // the main coroutine is running in a Send context, so we cannot use LocalSet here. Instead
 ///     // we use spawn_blocking in order to use LocalSet::block_on
 ///     tokio::task::spawn_blocking(move || {
 ///         // LocalSet allows us to work with !Send futures within tokio. Without it, any calls to
-///         // pyo3_asyncio_0_21::tokio::local_future_into_py will panic.
+///         // pyo3_async_runtimes::tokio::local_future_into_py will panic.
 ///         tokio::task::LocalSet::new().block_on(
-///             pyo3_asyncio_0_21::tokio::get_runtime(),
-///             pyo3_asyncio_0_21::tokio::scope_local(locals, async {
+///             pyo3_async_runtimes::tokio::get_runtime(),
+///             pyo3_async_runtimes::tokio::scope_local(locals, async {
 ///                 Python::with_gil(|py| {
 ///                     let py_future = sleep_for(py, 1)?;
-///                     pyo3_asyncio_0_21::tokio::into_future(py_future)
+///                     pyo3_async_runtimes::tokio::into_future(py_future)
 ///                 })?
 ///                 .await?;
 ///
@@ -580,7 +580,7 @@ where
 ///     })?;
 ///
 ///     Python::with_gil(|py| {
-///         pyo3_asyncio_0_21::tokio::into_future(
+///         pyo3_async_runtimes::tokio::into_future(
 ///             test_mod
 ///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
 ///                 .into_bound(py),
@@ -621,7 +621,7 @@ pub fn into_future(
 /// "#;
 ///
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
-/// # #[pyo3_asyncio_0_21::tokio::main]
+/// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
 ///     let test_mod = PyModule::from_code_bound(
@@ -631,8 +631,8 @@ pub fn into_future(
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio_0_21::tokio::into_stream_with_locals_v1(
-///         pyo3_asyncio_0_21::tokio::get_current_locals(py)?,
+///     pyo3_async_runtimes::tokio::into_stream_with_locals_v1(
+///         pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///         test_mod.call_method0("gen")?
 ///     )
 /// })?;
@@ -681,7 +681,7 @@ pub fn into_stream_with_locals_v1<'p>(
 /// "#;
 ///
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
-/// # #[pyo3_asyncio_0_21::tokio::main]
+/// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
 ///     let test_mod = PyModule::from_code_bound(
@@ -691,7 +691,7 @@ pub fn into_stream_with_locals_v1<'p>(
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio_0_21::tokio::into_stream_v1(test_mod.call_method0("gen")?)
+///     pyo3_async_runtimes::tokio::into_stream_v1(test_mod.call_method0("gen")?)
 /// })?;
 ///
 /// let vals = stream
@@ -738,7 +738,7 @@ pub fn into_stream_v1<'p>(
 /// "#;
 ///
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
-/// # #[pyo3_asyncio_0_21::tokio::main]
+/// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
 ///     let test_mod = PyModule::from_code_bound(
@@ -748,8 +748,8 @@ pub fn into_stream_v1<'p>(
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio_0_21::tokio::into_stream_with_locals_v2(
-///         pyo3_asyncio_0_21::tokio::get_current_locals(py)?,
+///     pyo3_async_runtimes::tokio::into_stream_with_locals_v2(
+///         pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///         test_mod.call_method0("gen")?
 ///     )
 /// })?;
@@ -798,7 +798,7 @@ pub fn into_stream_with_locals_v2<'p>(
 /// "#;
 ///
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
-/// # #[pyo3_asyncio_0_21::tokio::main]
+/// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
 ///     let test_mod = PyModule::from_code_bound(
@@ -808,7 +808,7 @@ pub fn into_stream_with_locals_v2<'p>(
 ///         "test_mod",
 ///     )?;
 ///
-///     pyo3_asyncio_0_21::tokio::into_stream_v2(test_mod.call_method0("gen")?)
+///     pyo3_async_runtimes::tokio::into_stream_v2(test_mod.call_method0("gen")?)
 /// })?;
 ///
 /// let vals = stream
