@@ -473,7 +473,7 @@ fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
 }
 
 /// Task-local data to store for Python conversions.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TaskLocals {
     /// Track the event loop of the Python task
     event_loop: PyObject,
@@ -510,12 +510,21 @@ impl TaskLocals {
 
     /// Get a reference to the event loop
     pub fn event_loop<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.event_loop.clone().into_bound(py)
+        self.event_loop.clone_ref(py).into_bound(py)
     }
 
     /// Get a reference to the python context
     pub fn context<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.context.clone().into_bound(py)
+        self.context.clone_ref(py).into_bound(py)
+    }
+
+    /// Create a clone of the TaskLocals by incrementing the reference counters of the event loop and
+    /// contextvars.
+    pub fn clone_ref(&self, py: Python<'_>) -> Self {
+        Self {
+            event_loop: self.event_loop.clone_ref(py),
+            context: self.context.clone_ref(py),
+        }
     }
 }
 

@@ -13,11 +13,10 @@
 //! features = ["unstable-streams"]
 //! ```
 
-use std::{any::Any, cell::RefCell, future::Future, panic::AssertUnwindSafe, pin::Pin};
-
 use async_std::task;
 use futures::FutureExt;
 use pyo3::prelude::*;
+use std::{any::Any, cell::RefCell, future::Future, panic::AssertUnwindSafe, pin::Pin};
 
 use crate::{
     generic::{self, ContextExt, JoinError, LocalContextExt, Runtime, SpawnLocalExt},
@@ -90,10 +89,13 @@ impl ContextExt for AsyncStdRuntime {
     }
 
     fn get_task_locals() -> Option<TaskLocals> {
-        match TASK_LOCALS.try_with(|c| c.borrow().clone()) {
-            Ok(locals) => locals,
-            Err(_) => None,
-        }
+        TASK_LOCALS
+            .try_with(|c| {
+                c.borrow()
+                    .as_ref()
+                    .map(|locals| Python::with_gil(|py| locals.clone_ref(py)))
+            })
+            .unwrap_or_default()
     }
 }
 
