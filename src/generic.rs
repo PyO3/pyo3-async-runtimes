@@ -1293,9 +1293,9 @@ where
 /// ```
 #[cfg(feature = "unstable-streams")]
 #[allow(unused_must_use)] // False positive unused lint on `R::spawn`
-pub fn into_stream_with_locals_v1<'p, R>(
+pub fn into_stream_with_locals_v1<R>(
     locals: TaskLocals,
-    gen: Bound<'p, PyAny>,
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static>
 where
     R: Runtime,
@@ -1437,8 +1437,8 @@ where
 /// # }
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_v1<'p, R>(
-    gen: Bound<'p, PyAny>,
+pub fn into_stream_v1<R>(
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static>
 where
     R: Runtime + ContextExt,
@@ -1651,9 +1651,9 @@ async def forward(gen, sender):
 /// # }
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_with_locals_v2<'p, R>(
+pub fn into_stream_with_locals_v2<R>(
     locals: TaskLocals,
-    gen: Bound<'p, PyAny>,
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyObject> + 'static>
 where
     R: Runtime + ContextExt,
@@ -1796,8 +1796,8 @@ where
 /// # }
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_v2<'p, R>(
-    gen: Bound<'p, PyAny>,
+pub fn into_stream_v2<R>(
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyObject> + 'static>
 where
     R: Runtime + ContextExt,
