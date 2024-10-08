@@ -240,7 +240,7 @@ fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
 
 /// This module is implemented in Rust.
 #[pymodule]
-fn test_mod(_py: Python, m: &PyModule) -> PyResult<()> {
+fn test_mod(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction(name = "sleep")]
     fn sleep_(py: Python) -> PyResult<Bound<PyAny>> {
@@ -287,7 +287,7 @@ fn test_multiple_asyncio_run() -> PyResult<()> {
 }
 
 #[pymodule]
-fn cvars_mod(_py: Python, m: &PyModule) -> PyResult<()> {
+fn cvars_mod(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction]
     fn async_callback(py: Python, callback: PyObject) -> PyResult<Bound<PyAny>> {
