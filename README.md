@@ -159,7 +159,7 @@ fn rust_sleep(py: Python) -> PyResult<Bound<PyAny>> {
 }
 
 #[pymodule]
-fn my_async_module(py: Python, m: &PyModule) -> PyResult<()> {
+fn my_async_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rust_sleep, m)?)?;
 
     Ok(())
@@ -183,7 +183,7 @@ fn rust_sleep(py: Python) -> PyResult<Bound<PyAny>> {
 }
 
 #[pymodule]
-fn my_async_module(py: Python, m: &PyModule) -> PyResult<()> {
+fn my_async_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rust_sleep, m)?)?;
     Ok(())
 }
@@ -453,7 +453,7 @@ fn rust_sleep(py: Python) -> PyResult<Bound<PyAny>> {
 }
 
 #[pymodule]
-fn my_async_module(_py: Python, m: &PyModule) -> PyResult<()> {
+fn my_async_module(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rust_sleep, m)?)?;
 
     Ok(())

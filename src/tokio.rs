@@ -5,7 +5,7 @@
 //!   class="module-item stab portability"
 //!   style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"
 //! ><code>unstable-streams</code></span>
-//! are only available when the `unstable-streams` Cargo feature is enabled:
+//! >are only available when the `unstable-streams` Cargo feature is enabled:
 //!
 //! ```toml
 //! [dependencies.pyo3-asyncio-0-21]
@@ -109,10 +109,12 @@ impl ContextExt for TokioRuntime {
     }
 
     fn get_task_locals() -> Option<TaskLocals> {
-        match TASK_LOCALS.try_with(|c| c.get().map(|locals| locals.clone())) {
-            Ok(locals) => locals,
-            Err(_) => None,
-        }
+        TASK_LOCALS
+            .try_with(|c| {
+                c.get()
+                    .map(|locals| Python::with_gil(|py| locals.clone_ref(py)))
+            })
+            .unwrap_or_default()
     }
 }
 
@@ -176,6 +178,7 @@ pub fn init(builder: Builder) {
 /// Initialize the Tokio runtime with a custom Tokio runtime
 ///
 /// Returns Ok(()) if success and Err(()) if it had been inited.
+#[allow(clippy::result_unit_err)]
 pub fn init_with_runtime(runtime: &'static Runtime) -> Result<(), ()> {
     TOKIO_RUNTIME
         .set(Pyo3Runtime::Borrowed(runtime))
@@ -278,13 +281,13 @@ where
 /// via [`into_future`] (new behaviour in `v0.15`).
 ///
 /// > Although `contextvars` are preserved for async Python functions, synchronous functions will
-/// unfortunately fail to resolve them when called within the Rust future. This is because the
-/// function is being called from a Rust thread, not inside an actual Python coroutine context.
+/// > unfortunately fail to resolve them when called within the Rust future. This is because the
+/// > function is being called from a Rust thread, not inside an actual Python coroutine context.
 /// >
 /// > As a workaround, you can get the `contextvars` from the current task locals using
-/// [`get_current_locals`] and [`TaskLocals::context`](`crate::TaskLocals::context`), then wrap your
-/// synchronous function in a call to `contextvars.Context.run`. This will set the context, call the
-/// synchronous function, and restore the previous context when it returns or raises an exception.
+/// > [`get_current_locals`] and [`TaskLocals::context`](`crate::TaskLocals::context`), then wrap your
+/// > synchronous function in a call to `contextvars.Context.run`. This will set the context, call the
+/// > synchronous function, and restore the previous context when it returns or raises an exception.
 ///
 /// # Arguments
 /// * `py` - PyO3 GIL guard
@@ -333,13 +336,13 @@ where
 /// via [`into_future`] (new behaviour in `v0.15`).
 ///
 /// > Although `contextvars` are preserved for async Python functions, synchronous functions will
-/// unfortunately fail to resolve them when called within the Rust future. This is because the
-/// function is being called from a Rust thread, not inside an actual Python coroutine context.
+/// > unfortunately fail to resolve them when called within the Rust future. This is because the
+/// > function is being called from a Rust thread, not inside an actual Python coroutine context.
 /// >
 /// > As a workaround, you can get the `contextvars` from the current task locals using
-/// [`get_current_locals`] and [`TaskLocals::context`](`crate::TaskLocals::context`), then wrap your
-/// synchronous function in a call to `contextvars.Context.run`. This will set the context, call the
-/// synchronous function, and restore the previous context when it returns or raises an exception.
+/// > [`get_current_locals`] and [`TaskLocals::context`](`crate::TaskLocals::context`), then wrap your
+/// > synchronous function in a call to `contextvars.Context.run`. This will set the context, call the
+/// > synchronous function, and restore the previous context when it returns or raises an exception.
 ///
 /// # Arguments
 /// * `py` - The current PyO3 GIL guard
@@ -379,13 +382,13 @@ where
 /// via [`into_future`] (new behaviour in `v0.15`).
 ///
 /// > Although `contextvars` are preserved for async Python functions, synchronous functions will
-/// unfortunately fail to resolve them when called within the Rust future. This is because the
-/// function is being called from a Rust thread, not inside an actual Python coroutine context.
+/// > unfortunately fail to resolve them when called within the Rust future. This is because the
+/// > function is being called from a Rust thread, not inside an actual Python coroutine context.
 /// >
 /// > As a workaround, you can get the `contextvars` from the current task locals using
-/// [`get_current_locals`] and [`TaskLocals::context`](`crate::TaskLocals::context`), then wrap your
-/// synchronous function in a call to `contextvars.Context.run`. This will set the context, call the
-/// synchronous function, and restore the previous context when it returns or raises an exception.
+/// > [`get_current_locals`] and [`TaskLocals::context`](`crate::TaskLocals::context`), then wrap your
+/// > synchronous function in a call to `contextvars.Context.run`. This will set the context, call the
+/// > synchronous function, and restore the previous context when it returns or raises an exception.
 ///
 /// # Arguments
 /// * `py` - PyO3 GIL guard
@@ -470,13 +473,13 @@ where
 /// via [`into_future`] (new behaviour in `v0.15`).
 ///
 /// > Although `contextvars` are preserved for async Python functions, synchronous functions will
-/// unfortunately fail to resolve them when called within the Rust future. This is because the
-/// function is being called from a Rust thread, not inside an actual Python coroutine context.
+/// > unfortunately fail to resolve them when called within the Rust future. This is because the
+/// > function is being called from a Rust thread, not inside an actual Python coroutine context.
 /// >
 /// > As a workaround, you can get the `contextvars` from the current task locals using
-/// [`get_current_locals`] and [`TaskLocals::context`](`crate::TaskLocals::context`), then wrap your
-/// synchronous function in a call to `contextvars.Context.run`. This will set the context, call the
-/// synchronous function, and restore the previous context when it returns or raises an exception.
+/// > [`get_current_locals`] and [`TaskLocals::context`](`crate::TaskLocals::context`), then wrap your
+/// > synchronous function in a call to `contextvars.Context.run`. This will set the context, call the
+/// > synchronous function, and restore the previous context when it returns or raises an exception.
 ///
 /// # Arguments
 /// * `py` - The current PyO3 GIL guard
@@ -650,9 +653,9 @@ pub fn into_future(
 /// # fn main() {}
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_with_locals_v1<'p>(
+pub fn into_stream_with_locals_v1(
     locals: TaskLocals,
-    gen: Bound<'p, PyAny>,
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static> {
     generic::into_stream_with_locals_v1::<TokioRuntime>(locals, gen)
 }
@@ -707,8 +710,8 @@ pub fn into_stream_with_locals_v1<'p>(
 /// # fn main() {}
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_v1<'p>(
-    gen: Bound<'p, PyAny>,
+pub fn into_stream_v1(
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static> {
     generic::into_stream_v1::<TokioRuntime>(gen)
 }
@@ -767,9 +770,9 @@ pub fn into_stream_v1<'p>(
 /// # fn main() {}
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_with_locals_v2<'p>(
+pub fn into_stream_with_locals_v2(
     locals: TaskLocals,
-    gen: Bound<'p, PyAny>,
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyObject> + 'static> {
     generic::into_stream_with_locals_v2::<TokioRuntime>(locals, gen)
 }
@@ -824,8 +827,8 @@ pub fn into_stream_with_locals_v2<'p>(
 /// # fn main() {}
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_v2<'p>(
-    gen: Bound<'p, PyAny>,
+pub fn into_stream_v2(
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyObject> + 'static> {
     generic::into_stream_v2::<TokioRuntime>(gen)
 }

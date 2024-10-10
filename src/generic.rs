@@ -15,24 +15,24 @@
 
 use std::{
     future::Future,
-    marker::PhantomData,
     pin::Pin,
     sync::{Arc, Mutex},
     task::{Context, Poll},
 };
 
-use futures::{
-    channel::{mpsc, oneshot},
-    SinkExt,
-};
-use once_cell::sync::OnceCell;
-use pin_project_lite::pin_project;
-use pyo3::prelude::*;
-
 use crate::{
     asyncio, call_soon_threadsafe, close, create_future, dump_err, err::RustPanic,
     get_running_loop, into_future_with_locals, TaskLocals,
 };
+use futures::channel::oneshot;
+#[cfg(feature = "unstable-streams")]
+use futures::{channel::mpsc, SinkExt};
+#[cfg(feature = "unstable-streams")]
+use once_cell::sync::OnceCell;
+use pin_project_lite::pin_project;
+use pyo3::prelude::*;
+#[cfg(feature = "unstable-streams")]
+use std::marker::PhantomData;
 
 /// Generic utilities for a JoinError
 pub trait JoinError {
@@ -585,7 +585,7 @@ where
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
-    let py_fut = create_future(locals.event_loop.clone().into_bound(py))?;
+    let py_fut = create_future(locals.event_loop.bind(py).clone())?;
     py_fut.call_method1(
         "add_done_callback",
         (PyDoneCallback {
@@ -594,14 +594,14 @@ where
     )?;
 
     let future_tx1 = PyObject::from(py_fut.clone());
-    let future_tx2 = future_tx1.clone();
+    let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn(async move {
-        let locals2 = locals.clone();
+        let locals2 = Python::with_gil(|py| locals.clone_ref(py));
 
         if let Err(e) = R::spawn(async move {
             let result = R::scope(
-                locals2.clone(),
+                Python::with_gil(|py| locals2.clone_ref(py)),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
@@ -990,7 +990,7 @@ where
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
-    let py_fut = create_future(locals.event_loop.clone().into_bound(py))?;
+    let py_fut = create_future(locals.event_loop.clone_ref(py).into_bound(py))?;
     py_fut.call_method1(
         "add_done_callback",
         (PyDoneCallback {
@@ -999,14 +999,14 @@ where
     )?;
 
     let future_tx1 = PyObject::from(py_fut.clone());
-    let future_tx2 = future_tx1.clone();
+    let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn_local(async move {
-        let locals2 = locals.clone();
+        let locals2 = Python::with_gil(|py| locals.clone_ref(py));
 
         if let Err(e) = R::spawn_local(async move {
             let result = R::scope_local(
-                locals2.clone(),
+                Python::with_gil(|py| locals2.clone_ref(py)),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
@@ -1293,9 +1293,9 @@ where
 /// ```
 #[cfg(feature = "unstable-streams")]
 #[allow(unused_must_use)] // False positive unused lint on `R::spawn`
-pub fn into_stream_with_locals_v1<'p, R>(
+pub fn into_stream_with_locals_v1<R>(
     locals: TaskLocals,
-    gen: Bound<'p, PyAny>,
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static>
 where
     R: Runtime,
@@ -1437,8 +1437,8 @@ where
 /// # }
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_v1<'p, R>(
-    gen: Bound<'p, PyAny>,
+pub fn into_stream_v1<R>(
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static>
 where
     R: Runtime + ContextExt,
@@ -1446,27 +1446,12 @@ where
     into_stream_with_locals_v1::<R>(get_current_locals::<R>(gen.py())?, gen)
 }
 
-#[allow(dead_code)]
-fn py_true() -> PyObject {
-    static TRUE: OnceCell<PyObject> = OnceCell::new();
-    TRUE.get_or_init(|| Python::with_gil(|py| true.into_py(py)))
-        .clone()
-}
-
-#[allow(dead_code)]
-fn py_false() -> PyObject {
-    static FALSE: OnceCell<PyObject> = OnceCell::new();
-    FALSE
-        .get_or_init(|| Python::with_gil(|py| false.into_py(py)))
-        .clone()
-}
-
 trait Sender: Send + 'static {
-    fn send(&mut self, locals: TaskLocals, item: PyObject) -> PyResult<PyObject>;
+    fn send(&mut self, py: Python, locals: TaskLocals, item: PyObject) -> PyResult<PyObject>;
     fn close(&mut self) -> PyResult<()>;
 }
 
-#[allow(dead_code)]
+#[cfg(feature = "unstable-streams")]
 struct GenericSender<R>
 where
     R: Runtime,
@@ -1475,13 +1460,14 @@ where
     tx: mpsc::Sender<PyObject>,
 }
 
+#[cfg(feature = "unstable-streams")]
 impl<R> Sender for GenericSender<R>
 where
     R: Runtime + ContextExt,
 {
-    fn send(&mut self, locals: TaskLocals, item: PyObject) -> PyResult<PyObject> {
-        match self.tx.try_send(item.clone()) {
-            Ok(_) => Ok(py_true()),
+    fn send(&mut self, py: Python, locals: TaskLocals, item: PyObject) -> PyResult<PyObject> {
+        match self.tx.try_send(item.clone_ref(py)) {
+            Ok(_) => Ok(true.into_py(py)),
             Err(e) => {
                 if e.is_full() {
                     let mut tx = self.tx.clone();
@@ -1490,19 +1476,19 @@ where
                             future_into_py_with_locals::<R, _, PyObject>(py, locals, async move {
                                 if tx.flush().await.is_err() {
                                     // receiving side disconnected
-                                    return Ok(py_false());
+                                    return Python::with_gil(|py| Ok(false.into_py(py)));
                                 }
                                 if tx.send(item).await.is_err() {
                                     // receiving side disconnected
-                                    return Ok(py_false());
+                                    return Python::with_gil(|py| Ok(false.into_py(py)));
                                 }
-                                Ok(py_true())
+                                Python::with_gil(|py| Ok(true.into_py(py)))
                             })?
                             .into(),
                         )
                     })
                 } else {
-                    Ok(py_false())
+                    Ok(false.into_py(py))
                 }
             }
         }
@@ -1521,7 +1507,7 @@ struct SenderGlue {
 #[pymethods]
 impl SenderGlue {
     pub fn send(&mut self, item: PyObject) -> PyResult<PyObject> {
-        self.tx.send(self.locals.clone(), item)
+        Python::with_gil(|py| self.tx.send(py, self.locals.clone_ref(py), item))
     }
     pub fn close(&mut self) -> PyResult<()> {
         self.tx.close()
@@ -1651,9 +1637,9 @@ async def forward(gen, sender):
 /// # }
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_with_locals_v2<'p, R>(
+pub fn into_stream_with_locals_v2<R>(
     locals: TaskLocals,
-    gen: Bound<'p, PyAny>,
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyObject> + 'static>
 where
     R: Runtime + ContextExt,
@@ -1796,8 +1782,8 @@ where
 /// # }
 /// ```
 #[cfg(feature = "unstable-streams")]
-pub fn into_stream_v2<'p, R>(
-    gen: Bound<'p, PyAny>,
+pub fn into_stream_v2<R>(
+    gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures::Stream<Item = PyObject> + 'static>
 where
     R: Runtime + ContextExt,
