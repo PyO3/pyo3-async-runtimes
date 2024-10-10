@@ -122,10 +122,11 @@ fn test_local_future_into_py(event_loop: PyObject) -> PyResult<()> {
 #[pyo3_async_runtimes::tokio::test]
 async fn test_panic() -> PyResult<()> {
     let fut = Python::with_gil(|py| -> PyResult<_> {
-        pyo3_async_runtimes::tokio::into_future(pyo3_async_runtimes::tokio::future_into_py::<_, ()>(
-            py,
-            async { panic!("this panic was intentional!") },
-        )?)
+        pyo3_async_runtimes::tokio::into_future(
+            pyo3_async_runtimes::tokio::future_into_py::<_, ()>(py, async {
+                panic!("this panic was intentional!")
+            })?,
+        )
     })?;
 
     match fut.await {
