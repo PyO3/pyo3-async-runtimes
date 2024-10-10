@@ -43,13 +43,13 @@ pub mod re_exports {
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span>
 #[cfg(feature = "attributes")]
-pub use pyo3_asyncio_macros_0_21::tokio_main as main;
+pub use pyo3_async_runtimes_macros::tokio_main as main;
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span>
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>testing</code></span>
 /// Registers a `tokio` test with the `pyo3-asyncio` test harness
 #[cfg(all(feature = "attributes", feature = "testing"))]
-pub use pyo3_asyncio_macros_0_21::tokio_test as test;
+pub use pyo3_async_runtimes_macros::tokio_test as test;
 
 enum Pyo3Runtime {
     Borrowed(&'static Runtime),
