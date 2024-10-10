@@ -34,13 +34,13 @@ pub mod re_exports {
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span> Provides the boilerplate for the `async-std` runtime and runs an async fn as main
 #[cfg(feature = "attributes")]
-pub use pyo3_asyncio_macros_0_21::async_std_main as main;
+pub use pyo3_async_runtimes_macros::async_std_main as main;
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span>
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>testing</code></span>
 /// Registers an `async-std` test with the `pyo3-asyncio` test harness
 #[cfg(all(feature = "attributes", feature = "testing"))]
-pub use pyo3_asyncio_macros_0_21::async_std_test as test;
+pub use pyo3_async_runtimes_macros::async_std_test as test;
 
 struct AsyncStdJoinErr(Box<dyn Any + Send + 'static>);
 
