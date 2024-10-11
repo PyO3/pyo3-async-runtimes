@@ -93,7 +93,7 @@
 //!     let locals = pyo3_async_runtimes::TaskLocals::with_running_loop(py)?.copy_context(py)?;
 //!
 //!     // Convert the async move { } block to a Python awaitable
-//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone(), async move {
+//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone_ref(py), async move {
 //!         let py_sleep = Python::with_gil(|py| {
 //!             // Sometimes we need to call other async Python functions within
 //!             // this future. In order for this to work, we need to track the
@@ -112,7 +112,7 @@
 //!
 //! # #[cfg(feature = "tokio-runtime")]
 //! #[pymodule]
-//! fn my_mod(py: Python, m: &PyModule) -> PyResult<()> {
+//! fn my_mod(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 //!     m.add_function(wrap_pyfunction!(sleep, m)?)?;
 //!     Ok(())
 //! }
@@ -162,9 +162,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone(),
+//!         locals.clone_ref(py),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(py), async move {
 //!             let py_sleep = Python::with_gil(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     // Now we can get the current locals through task-local data
@@ -189,9 +189,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone(),
+//!         locals.clone_ref(py),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(py), async move {
 //!             let py_sleep = Python::with_gil(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
@@ -210,7 +210,7 @@
 //!
 //! # #[cfg(feature = "tokio-runtime")]
 //! #[pymodule]
-//! fn my_mod(py: Python, m: &PyModule) -> PyResult<()> {
+//! fn my_mod(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 //!     m.add_function(wrap_pyfunction!(sleep, m)?)?;
 //!     m.add_function(wrap_pyfunction!(wrap_sleep, m)?)?;
 //!     Ok(())
@@ -270,7 +270,7 @@
 //!
 //! # #[cfg(feature = "tokio-runtime")]
 //! #[pymodule]
-//! fn my_mod(py: Python, m: &PyModule) -> PyResult<()> {
+//! fn my_mod(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 //!     m.add_function(wrap_pyfunction!(sleep, m)?)?;
 //!     m.add_function(wrap_pyfunction!(wrap_sleep, m)?)?;
 //!     Ok(())
@@ -473,7 +473,7 @@ fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
 }
 
 /// Task-local data to store for Python conversions.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TaskLocals {
     /// Track the event loop of the Python task
     event_loop: PyObject,
@@ -510,12 +510,21 @@ impl TaskLocals {
 
     /// Get a reference to the event loop
     pub fn event_loop<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.event_loop.clone().into_bound(py)
+        self.event_loop.clone_ref(py).into_bound(py)
     }
 
     /// Get a reference to the python context
     pub fn context<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.context.clone().into_bound(py)
+        self.context.clone_ref(py).into_bound(py)
+    }
+
+    /// Create a clone of the TaskLocals by incrementing the reference counters of the event loop and
+    /// contextvars.
+    pub fn clone_ref(&self, py: Python<'_>) -> Self {
+        Self {
+            event_loop: self.event_loop.clone_ref(py),
+            context: self.context.clone_ref(py),
+        }
     }
 }
 
