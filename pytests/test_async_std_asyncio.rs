@@ -96,12 +96,11 @@ async fn test_other_awaitables() -> PyResult<()> {
 #[pyo3_async_runtimes::async_std::test]
 async fn test_panic() -> PyResult<()> {
     let fut = Python::with_gil(|py| -> PyResult<_> {
-        pyo3_async_runtimes::async_std::into_future(pyo3_async_runtimes::async_std::future_into_py::<
-            _,
-            (),
-        >(py, async {
-            panic!("this panic was intentional!")
-        })?)
+        pyo3_async_runtimes::async_std::into_future(
+            pyo3_async_runtimes::async_std::future_into_py::<_, ()>(py, async {
+                panic!("this panic was intentional!")
+            })?,
+        )
     })?;
 
     match fut.await {
@@ -263,7 +262,7 @@ fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
 
 /// This module is implemented in Rust.
 #[pymodule]
-fn test_mod(_py: Python, m: &PyModule) -> PyResult<()> {
+fn test_mod(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction(name = "sleep")]
     fn sleep_(py: Python) -> PyResult<Bound<PyAny>> {
@@ -310,7 +309,7 @@ fn test_multiple_asyncio_run() -> PyResult<()> {
 }
 
 #[pymodule]
-fn cvars_mod(_py: Python, m: &PyModule) -> PyResult<()> {
+fn cvars_mod(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction]
     pub(crate) fn async_callback(py: Python, callback: PyObject) -> PyResult<Bound<PyAny>> {
@@ -385,5 +384,7 @@ fn test_contextvars() -> PyResult<()> {
 fn main() -> pyo3::PyResult<()> {
     pyo3::prepare_freethreaded_python();
 
-    Python::with_gil(|py| pyo3_async_runtimes::async_std::run(py, pyo3_async_runtimes::testing::main()))
+    Python::with_gil(|py| {
+        pyo3_async_runtimes::async_std::run(py, pyo3_async_runtimes::testing::main())
+    })
 }

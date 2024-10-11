@@ -189,14 +189,9 @@ use pyo3::prelude::*;
 ///
 /// These args are meant to mirror the default test harness's args.
 /// > Currently only `--filter` is supported.
+#[derive(Default)]
 pub struct Args {
     filter: Option<String>,
-}
-
-impl Default for Args {
-    fn default() -> Self {
-        Self { filter: None }
-    }
 }
 
 /// Parse the test args from the command line
@@ -240,9 +235,7 @@ pub fn parse_args() -> Args {
         .get_matches();
 
     Args {
-        filter: matches
-            .get_one::<String>("TESTNAME")
-            .map(|name| name.clone()),
+        filter: matches.get_one::<String>("TESTNAME").cloned(),
     }
 }
 
@@ -315,11 +308,7 @@ pub async fn test_harness(tests: Vec<Test>, args: Args) -> PyResult<()> {
 pub async fn main() -> PyResult<()> {
     let args = parse_args();
 
-    test_harness(
-        inventory::iter::<Test>().map(|test| test.clone()).collect(),
-        args,
-    )
-    .await
+    test_harness(inventory::iter::<Test>().cloned().collect(), args).await
 }
 
 #[cfg(test)]

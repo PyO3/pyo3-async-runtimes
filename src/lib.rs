@@ -41,8 +41,8 @@
 //! library needs to be able to preserve `contextvars` during conversions.
 //!
 //! > The core conversions we've mentioned so far in the README should insulate you from these
-//! concerns in most cases. For the edge cases where they don't, this section should provide you
-//! with the information you need to solve these problems.
+//! > concerns in most cases. For the edge cases where they don't, this section should provide you
+//! > with the information you need to solve these problems.
 //!
 //! ### The Main Dilemma
 //!
@@ -74,9 +74,9 @@
 //!
 //! - `pyo3_async_runtimes::into_future_with_locals` - Convert a Python awaitable into a Rust future.
 //! - `pyo3_async_runtimes::<runtime>::future_into_py_with_locals` - Convert a Rust future into a Python
-//! awaitable.
+//!   awaitable.
 //! - `pyo3_async_runtimes::<runtime>::local_future_into_py_with_locals` - Convert a `!Send` Rust future
-//! into a Python awaitable.
+//!   into a Python awaitable.
 //!
 //! One clear disadvantage to this approach is that the Rust application has to explicitly track
 //! these references. In native libraries, we can't make any assumptions about the underlying event
@@ -93,7 +93,7 @@
 //!     let locals = pyo3_async_runtimes::TaskLocals::with_running_loop(py)?.copy_context(py)?;
 //!
 //!     // Convert the async move { } block to a Python awaitable
-//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone(), async move {
+//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone_ref(py), async move {
 //!         let py_sleep = Python::with_gil(|py| {
 //!             // Sometimes we need to call other async Python functions within
 //!             // this future. In order for this to work, we need to track the
@@ -112,19 +112,19 @@
 //!
 //! # #[cfg(feature = "tokio-runtime")]
 //! #[pymodule]
-//! fn my_mod(py: Python, m: &PyModule) -> PyResult<()> {
+//! fn my_mod(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 //!     m.add_function(wrap_pyfunction!(sleep, m)?)?;
 //!     Ok(())
 //! }
 //! ```
 //!
 //! > A naive solution to this tracking problem would be to cache a global reference to the asyncio
-//! event loop that all PyO3 Asyncio conversions can use. In fact this is what we did in PyO3
-//! Asyncio `v0.13`. This works well for applications, but it soon became clear that this is not
-//! so ideal for libraries. Libraries usually have no direct control over how the event loop is
-//! managed, they're just expected to work with any event loop at any point in the application.
-//! This problem is compounded further when multiple event loops are used in the application since
-//! the global reference will only point to one.
+//! > event loop that all PyO3 Asyncio conversions can use. In fact this is what we did in PyO3
+//! > Asyncio `v0.13`. This works well for applications, but it soon became clear that this is not
+//! > so ideal for libraries. Libraries usually have no direct control over how the event loop is
+//! > managed, they're just expected to work with any event loop at any point in the application.
+//! > This problem is compounded further when multiple event loops are used in the application since
+//! > the global reference will only point to one.
 //!
 //! Another disadvantage to this explicit approach that is less obvious is that we can no longer
 //! call our `#[pyfunction] fn sleep` on a Rust runtime since `asyncio.get_running_loop` only works
@@ -146,7 +146,7 @@
 //!
 //! - `pyo3_async_runtimes::<runtime>::scope` - Store the task-local data when executing the given Future.
 //! - `pyo3_async_runtimes::<runtime>::scope_local` - Store the task-local data when executing the given
-//! `!Send` Future.
+//!   `!Send` Future.
 //!
 //! With these new functions, we can make our previous example more correct:
 //!
@@ -162,9 +162,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone(),
+//!         locals.clone_ref(py),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(py), async move {
 //!             let py_sleep = Python::with_gil(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     // Now we can get the current locals through task-local data
@@ -189,9 +189,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone(),
+//!         locals.clone_ref(py),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(py), async move {
 //!             let py_sleep = Python::with_gil(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
@@ -210,7 +210,7 @@
 //!
 //! # #[cfg(feature = "tokio-runtime")]
 //! #[pymodule]
-//! fn my_mod(py: Python, m: &PyModule) -> PyResult<()> {
+//! fn my_mod(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 //!     m.add_function(wrap_pyfunction!(sleep, m)?)?;
 //!     m.add_function(wrap_pyfunction!(wrap_sleep, m)?)?;
 //!     Ok(())
@@ -222,15 +222,15 @@
 //!
 //! - `pyo3_async_runtimes::<runtime>::into_future`
 //!   > Convert a Python awaitable into a Rust future (using
-//!   `pyo3_async_runtimes::<runtime>::get_current_locals`)
+//!   > `pyo3_async_runtimes::<runtime>::get_current_locals`)
 //! - `pyo3_async_runtimes::<runtime>::future_into_py`
 //!   > Convert a Rust future into a Python awaitable (using
-//!   `pyo3_async_runtimes::<runtime>::get_current_locals` and `pyo3_async_runtimes::<runtime>::scope` to set the
-//!   task-local event loop for the given Rust future)
+//!   > `pyo3_async_runtimes::<runtime>::get_current_locals` and `pyo3_async_runtimes::<runtime>::scope` to set the
+//!   > task-local event loop for the given Rust future)
 //! - `pyo3_async_runtimes::<runtime>::local_future_into_py`
 //!   > Convert a `!Send` Rust future into a Python awaitable (using
-//!   `pyo3_async_runtimes::<runtime>::get_current_locals` and `pyo3_async_runtimes::<runtime>::scope_local` to
-//!   set the task-local event loop for the given Rust future).
+//!   > `pyo3_async_runtimes::<runtime>::get_current_locals` and `pyo3_async_runtimes::<runtime>::scope_local` to
+//!   > set the task-local event loop for the given Rust future).
 //!
 //! __These are the functions that we recommend using__. With these functions, the previous example
 //! can be rewritten to be more compact:
@@ -270,7 +270,7 @@
 //!
 //! # #[cfg(feature = "tokio-runtime")]
 //! #[pymodule]
-//! fn my_mod(py: Python, m: &PyModule) -> PyResult<()> {
+//! fn my_mod(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 //!     m.add_function(wrap_pyfunction!(sleep, m)?)?;
 //!     m.add_function(wrap_pyfunction!(wrap_sleep, m)?)?;
 //!     Ok(())
@@ -278,7 +278,7 @@
 //! ```
 //!
 //! > A special thanks to [@ShadowJonathan](https://github.com/ShadowJonathan) for helping with the
-//! design and review of these changes!
+//! > design and review of these changes!
 //!
 //! ## Rust's Event Loop
 //!
@@ -287,7 +287,7 @@
 //! with the [`generic`] module)!
 //!
 //! > _In the future, we may implement first class support for more Rust runtimes. Contributions are
-//! welcome as well!_
+//! > welcome as well!_
 //!
 //! ## Features
 //!
@@ -296,7 +296,7 @@
 //!   class="module-item stab portability"
 //!   style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"
 //! ><code>attributes</code></span>
-//! are only available when the `attributes` Cargo feature is enabled:
+//! > are only available when the `attributes` Cargo feature is enabled:
 //!
 //! ```toml
 //! [dependencies.pyo3-asyncio-0-21]
@@ -309,7 +309,7 @@
 //!   class="module-item stab portability"
 //!   style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"
 //! ><code>async-std-runtime</code></span>
-//! are only available when the `async-std-runtime` Cargo feature is enabled:
+//! > are only available when the `async-std-runtime` Cargo feature is enabled:
 //!
 //! ```toml
 //! [dependencies.pyo3-asyncio-0-21]
@@ -322,7 +322,7 @@
 //!   class="module-item stab portability"
 //!   style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"
 //! ><code>tokio-runtime</code></span>
-//! are only available when the `tokio-runtime` Cargo feature is enabled:
+//! > are only available when the `tokio-runtime` Cargo feature is enabled:
 //!
 //! ```toml
 //! [dependencies.pyo3-asyncio-0-21]
@@ -335,7 +335,7 @@
 //!   class="module-item stab portability"
 //!   style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"
 //! ><code>testing</code></span>
-//! are only available when the `testing` Cargo feature is enabled:
+//! > are only available when the `testing` Cargo feature is enabled:
 //!
 //! ```toml
 //! [dependencies.pyo3-asyncio-0-21]
@@ -473,7 +473,7 @@ fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
 }
 
 /// Task-local data to store for Python conversions.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TaskLocals {
     /// Track the event loop of the Python task
     event_loop: PyObject,
@@ -510,12 +510,21 @@ impl TaskLocals {
 
     /// Get a reference to the event loop
     pub fn event_loop<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.event_loop.clone().into_bound(py)
+        self.event_loop.clone_ref(py).into_bound(py)
     }
 
     /// Get a reference to the python context
     pub fn context<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.context.clone().into_bound(py)
+        self.context.clone_ref(py).into_bound(py)
+    }
+
+    /// Create a clone of the TaskLocals by incrementing the reference counters of the event loop and
+    /// contextvars.
+    pub fn clone_ref(&self, py: Python<'_>) -> Self {
+        Self {
+            event_loop: self.event_loop.clone_ref(py),
+            context: self.context.clone_ref(py),
+        }
     }
 }
 
