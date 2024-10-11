@@ -5,7 +5,7 @@
 //!   class="module-item stab portability"
 //!   style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"
 //! ><code>unstable-streams</code></span>
-//! >are only available when the `unstable-streams` Cargo feature is enabled:
+//! are only available when the `unstable-streams` Cargo feature is enabled:
 //!
 //! ```toml
 //! [dependencies.pyo3-asyncio-0-21]
