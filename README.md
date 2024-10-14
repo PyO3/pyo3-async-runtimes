@@ -54,9 +54,9 @@ Here we initialize the runtime, import Python's `asyncio` library and run the gi
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.20" }
-pyo3-asyncio-0-21 = { version = "0.20", features = ["attributes", "async-std-runtime"] }
-async-std = "1.9"
+pyo3 = { version = "0.22" }
+pyo3-async-runtimes = { version = "0.22", features = ["attributes", "async-std-runtime"] }
+async-std = "1.13"
 ```
 
 ```rust
@@ -84,9 +84,9 @@ attribute.
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.20" }
-pyo3-asyncio-0-21 = { version = "0.20", features = ["attributes", "tokio-runtime"] }
-tokio = "1.9"
+pyo3 = { version = "0.22" }
+pyo3-async-runtimes = { version = "0.22", features = ["attributes", "tokio-runtime"] }
+tokio = "1.40"
 ```
 
 ```rust
@@ -129,9 +129,9 @@ For `async-std`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.20", features = ["extension-module"] }
-pyo3-asyncio-0-21 = { version = "0.20", features = ["async-std-runtime"] }
-async-std = "1.9"
+pyo3 = { version = "0.22", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.22", features = ["async-std-runtime"] }
+async-std = "1.13"
 ```
 
 For `tokio`:
@@ -139,8 +139,8 @@ For `tokio`:
 ```toml
 [dependencies]
 pyo3 = { version = "0.20", features = ["extension-module"] }
-pyo3-asyncio-0-21 = { version = "0.20", features = ["tokio-runtime"] }
-tokio = "1.9"
+pyo3-async-runtimes = { version = "0.22", features = ["tokio-runtime"] }
+tokio = "1.40"
 ```
 
 Export an async function that makes use of `async-std`:
@@ -228,7 +228,7 @@ to do something special with the object that it returns.
 
 Normally in Python, that something special is the `await` keyword, but in order to await this
 coroutine in Rust, we first need to convert it into Rust's version of a `coroutine`: a `Future`.
-That's where `pyo3-asyncio` comes in.
+That's where `pyo3-async-runtimes` comes in.
 [`pyo3_async_runtimes::into_future`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/fn.into_future.html)
 performs this conversion for us:
 
@@ -433,10 +433,10 @@ name = "my_async_module"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.20", features = ["extension-module"] }
-pyo3-asyncio-0-21 = { version = "0.20", features = ["tokio-runtime"] }
-async-std = "1.9"
-tokio = "1.9"
+pyo3 = { version = "0.22", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.22", features = ["tokio-runtime"] }
+async-std = "1.13"
+tokio = "1.40"
 ```
 
 ```rust
@@ -492,9 +492,9 @@ event loop before we can install the `uvloop` policy.
 
 ```toml
 [dependencies]
-async-std = "1.9"
-pyo3 = "0.20"
-pyo3-asyncio-0-21 = { version = "0.20", features = ["async-std-runtime"] }
+async-std = "1.13"
+pyo3 = "0.22"
+pyo3-async-runtimes = { version = "0.22", features = ["async-std-runtime"] }
 ```
 
 ```rust no_run
