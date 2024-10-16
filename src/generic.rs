@@ -8,8 +8,8 @@
 //! > are only available when the `unstable-streams` Cargo feature is enabled:
 //!
 //! ```toml
-//! [dependencies.pyo3-asyncio-0-21]
-//! version = "0.21"
+//! [dependencies.pyo3-async-runtimes]
+//! version = "0.22"
 //! features = ["unstable-streams"]
 //! ```
 
@@ -1651,8 +1651,8 @@ where
             Ok(PyModule::from_code_bound(
                 py,
                 STREAM_GLUE,
-                "pyo3_asyncio/pyo3_asyncio_glue.py",
-                "pyo3_asyncio_glue",
+                "pyo3_async_runtimes/pyo3_async_runtimes_glue.py",
+                "pyo3_async_runtimes_glue",
             )?
             .into())
         })?
