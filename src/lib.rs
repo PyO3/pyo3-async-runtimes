@@ -299,8 +299,8 @@
 //! > are only available when the `attributes` Cargo feature is enabled:
 //!
 //! ```toml
-//! [dependencies.pyo3-asyncio-0-21]
-//! version = "0.21"
+//! [dependencies.pyo3-async-runtimes]
+//! version = "0.22"
 //! features = ["attributes"]
 //! ```
 //!
@@ -312,8 +312,8 @@
 //! > are only available when the `async-std-runtime` Cargo feature is enabled:
 //!
 //! ```toml
-//! [dependencies.pyo3-asyncio-0-21]
-//! version = "0.21"
+//! [dependencies.pyo3-async-runtimes]
+//! version = "0.22"
 //! features = ["async-std-runtime"]
 //! ```
 //!
@@ -325,8 +325,8 @@
 //! > are only available when the `tokio-runtime` Cargo feature is enabled:
 //!
 //! ```toml
-//! [dependencies.pyo3-asyncio-0-21]
-//! version = "0.21"
+//! [dependencies.pyo3-async-runtimes]
+//! version = "0.22"
 //! features = ["tokio-runtime"]
 //! ```
 //!
@@ -338,8 +338,8 @@
 //! > are only available when the `testing` Cargo feature is enabled:
 //!
 //! ```toml
-//! [dependencies.pyo3-asyncio-0-21]
-//! version = "0.21"
+//! [dependencies.pyo3-async-runtimes]
+//! version = "0.22"
 //! features = ["testing"]
 //! ```
 
@@ -363,7 +363,7 @@ pub mod err;
 pub mod generic;
 
 #[pymodule]
-fn pyo3_asyncio(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+fn pyo3_async_runtimes(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add("RustPanic", py.get_type_bound::<err::RustPanic>())?;
     Ok(())
 }

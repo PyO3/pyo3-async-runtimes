@@ -7,7 +7,7 @@
 //! harness since it doesn't allow Python to gain control over the main thread. Instead, we have to
 //! provide our own test harness in order to create integration tests.
 //!
-//! Running `pyo3-asyncio` code in doc tests _is_ supported however since each doc test has its own
+//! Running `pyo3-async-runtimes` code in doc tests _is_ supported however since each doc test has its own
 //! `main` function. When writing doc tests, you may use the
 //! [`#[pyo3_async_runtimes::async_std::main]`](crate::async_std::main) or
 //! [`#[pyo3_async_runtimes::tokio::main]`](crate::tokio::main) macros on the test's main function to run
@@ -26,7 +26,7 @@
 //! > The name `pytests` is just a convention. You can name this folder anything you want in your own
 //! > projects.
 //!
-//! We'll also want to provide the test's main function. Most of the functionality that the test harness needs is packed in the [`pyo3_async_runtimes::testing::main`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/testing/fn.main.html) function. This function will parse the test's CLI arguments, collect and pass the functions marked with [`#[pyo3_async_runtimes::async_std::test]`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/attr.test.html) or [`#[pyo3_async_runtimes::tokio::test]`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/tokio/attr.test.html) and pass them into the test harness for running and filtering.
+//! We'll also want to provide the test's main function. Most of the functionality that the test harness needs is packed in the [`pyo3_async_runtimes::testing::main`](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/testing/fn.main.html) function. This function will parse the test's CLI arguments, collect and pass the functions marked with [`#[pyo3_async_runtimes::async_std::test]`](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/async_std/attr.test.html) or [`#[pyo3_async_runtimes::tokio::test]`](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/tokio/attr.test.html) and pass them into the test harness for running and filtering.
 //!
 //! `pytests/test_example.rs` for the `tokio` runtime:
 //! ```rust
@@ -61,10 +61,10 @@
 //! harness = false
 //! ```
 //!
-//! Also add the `testing` and `attributes` features to the `pyo3-asyncio` dependency and select your preferred runtime:
+//! Also add the `testing` and `attributes` features to the `pyo3-async-runtimes` dependency and select your preferred runtime:
 //!
 //! ```toml
-//! pyo3-asyncio-0-21 = { version = "0.21", features = ["testing", "attributes", "async-std-runtime"] }
+//! pyo3-async-runtimes = { version = "0.22", features = ["testing", "attributes", "async-std-runtime"] }
 //! ```
 //!
 //! At this point, you should be able to run the test via `cargo test`
@@ -73,7 +73,7 @@
 //!
 //! We can add tests anywhere in the test crate with the runtime's corresponding `#[test]` attribute:
 //!
-//! For `async-std` use the [`pyo3_async_runtimes::async_std::test`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/async_std/attr.test.html) attribute:
+//! For `async-std` use the [`pyo3_async_runtimes::async_std::test`](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/async_std/attr.test.html) attribute:
 //! ```rust
 //! # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
 //! mod tests {
@@ -105,7 +105,7 @@
 //! # fn main() {}
 //! ```
 //!
-//! For `tokio` use the [`pyo3_async_runtimes::tokio::test`](https://docs.rs/pyo3-asyncio/latest/pyo3_asyncio/tokio/attr.test.html) attribute:
+//! For `tokio` use the [`pyo3_async_runtimes::tokio::test`](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/tokio/attr.test.html) attribute:
 //! ```rust
 //! # #[cfg(all(feature = "tokio-runtime", feature = "attributes"))]
 //! mod tests {
@@ -202,7 +202,7 @@ pub struct Args {
 /// Ideally, we should mirror the default test harness's arguments exactly, but
 /// for the sake of simplicity, only filtering is supported for now. If you want
 /// more features, feel free to request them
-/// [here](https://github.com/awestlake87/pyo3-asyncio/issues).
+/// [here](https://github.com/PyO3/pyo3-async-runtimes/issues).
 ///
 /// # Examples
 ///
@@ -241,7 +241,7 @@ pub fn parse_args() -> Args {
 
 type TestFn = dyn Fn() -> Pin<Box<dyn Future<Output = PyResult<()>> + Send>> + Send + Sync;
 
-/// The structure used by the `#[test]` macros to provide a test to the `pyo3-asyncio` test harness.
+/// The structure used by the `#[test]` macros to provide a test to the `pyo3-async-runtimes` test harness.
 #[derive(Clone)]
 pub struct Test {
     /// The fully qualified name of the test
@@ -286,7 +286,7 @@ pub async fn test_harness(tests: Vec<Test>, args: Args) -> PyResult<()> {
     Ok(())
 }
 
-/// Parses test arguments and passes the tests to the `pyo3-asyncio` test harness
+/// Parses test arguments and passes the tests to the `pyo3-async-runtimes` test harness
 ///
 /// This function collects the test structures from the `inventory` boilerplate and forwards them to
 /// the test harness.

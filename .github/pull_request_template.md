@@ -1,4 +1,4 @@
-Thank you for contributing to pyo3-asyncio!
+Thank you for contributing to pyo3-async-runtimes!
 
 Please consider adding the following to your pull request:
  - an entry in CHANGELOG.md
