@@ -49,10 +49,10 @@ jobs:
         rust: [stable]
         python-version:
           [
-            "3.9-dev",
-            "3.10-dev",
-            "3.11-dev",
-            "3.12-dev",
+            "3.9",
+            "3.10",
+            "3.11",
+            "3.12",
             "pypy-3.9",
           ]
         platform:
