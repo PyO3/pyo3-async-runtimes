@@ -49,15 +49,16 @@ jobs:
         rust: [stable]
         python-version:
           [
-            "3.9",
-            "3.10",
+            "3.9-dev",
+            "3.10-dev",
             "3.11-dev",
+            "3.12-dev",
             "pypy-3.9",
           ]
         platform:
           [
             {
-              os: "macOS-latest",
+              os: "macos-latest",
               python-architecture: "x64",
               rust-target: "x86_64-apple-darwin",
             },
@@ -107,11 +108,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set DYLD_LIBRARY_PATH (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          echo "DYLD_LIBRARY_PATH=/usr/local/opt/gettext/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
