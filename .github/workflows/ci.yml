@@ -108,6 +108,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install gettext (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gettext
+          brew link --force gettext
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -119,12 +125,6 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.platform.rust-target }}
-
-      - name: Install gettext (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install gettext
-          brew link --force gettext
 
       # - if: matrix.platform.os == 'ubuntu-latest'
       #   name: Prepare LD_LIBRARY_PATH (Ubuntu only)
