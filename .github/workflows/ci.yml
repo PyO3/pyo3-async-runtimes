@@ -83,7 +83,7 @@ jobs:
             platform: { os: "windows-latest", python-architecture: "x86" }
         include:
           # Test minimal supported Rust version
-          - rust: 1.63.0
+          - rust: 1.70.0
             python-version: "3.10"
             platform:
               {
