@@ -49,13 +49,9 @@ jobs:
         rust: [stable]
         python-version:
           [
-            "3.7",
-            "3.8",
             "3.9",
             "3.10",
             "3.11-dev",
-            "pypy-3.7",
-            "pypy-3.8",
             "pypy-3.9",
           ]
         platform:
@@ -83,10 +79,6 @@ jobs:
           ]
         exclude:
           # PyPy doesn't release 32-bit Windows builds any more
-          - python-version: pypy-3.7
-            platform: { os: "windows-latest", python-architecture: "x86" }
-          - python-version: pypy-3.8
-            platform: { os: "windows-latest", python-architecture: "x86" }
           - python-version: pypy-3.9
             platform: { os: "windows-latest", python-architecture: "x86" }
         include:
@@ -127,6 +119,12 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.platform.rust-target }}
+
+      - name: Install gettext (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gettext
+          brew link --force gettext
 
       # - if: matrix.platform.os == 'ubuntu-latest'
       #   name: Prepare LD_LIBRARY_PATH (Ubuntu only)
