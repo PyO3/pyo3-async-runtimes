@@ -229,7 +229,7 @@ to do something special with the object that it returns.
 Normally in Python, that something special is the `await` keyword, but in order to await this
 coroutine in Rust, we first need to convert it into Rust's version of a `coroutine`: a `Future`.
 That's where `pyo3-async-runtimes` comes in.
-[`pyo3_async_runtimes::into_future`](https://docs.rs/pyo3-asyncio/latest/pyo3_async_runtimes/fn.into_future.html)
+[`pyo3_async_runtimes::into_future`](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/fn.into_future.html)
 performs this conversion for us:
 
 ```rust no_run
