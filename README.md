@@ -1,8 +1,8 @@
 # PyO3 Asyncio
 
-[![Actions Status](https://github.com/davidhewitt/pyo3-asyncio/workflows/CI/badge.svg)](https://github.com/davidhewitt/pyo3-asyncio/actions)
-[![codecov](https://codecov.io/gh/davidhewitt/pyo3-asyncio/branch/master/graph/badge.svg)](https://codecov.io/gh/davidhewitt/pyo3-asyncio)
-[![crates.io](https://img.shields.io/crates/v/pyo3-asyncio-0-21)](https://crates.io/crates/pyo3-asyncio-0-21)
+[![Actions Status](https://github.com/PyO3/pyo3-async-runtimes/workflows/CI/badge.svg)](https://github.com/PyO3/pyo3-async-runtimes)
+[![codecov](https://codecov.io/gh/davidhewitt/pyo3-async-runtimes/branch/main/graph/badge.svg)](https://codecov.io/gh/PyO3/pyo3-async-runtimes)
+[![crates.io](https://img.shields.io/crates/v/pyo3-async-runtimes)](https://crates.io/crates/pyo3-async-runtimes)
 [![minimum rustc 1.63](https://img.shields.io/badge/rustc-1.63+-blue.svg)](https://rust-lang.github.io/rfcs/2495-min-rust-version.html)
 
 ***This is a fork of [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21. This may be the base for a permanent fork in the future, depending on the status of the original `pyo3-asyncio` maintainer.***
@@ -11,11 +11,11 @@
 
 - PyO3 Project: [Homepage](https://pyo3.rs/) | [GitHub](https://github.com/PyO3/pyo3)
 
-- PyO3 Asyncio API Documentation: [stable](https://docs.rs/pyo3-asyncio/) | [master](https://awestlake87.github.io/pyo3-asyncio/master/doc)
+- PyO3 Async Runtimes API Documentation: [stable](https://docs.rs/pyo3-async-runtimes/)
 
 - Guide for Async / Await [stable](https://pyo3.rs/latest/ecosystem/async-await.html) | [main](https://pyo3.rs/main/ecosystem/async-await.html)
 
-- Contributing Notes: [github](https://github.com/davidhewitt/pyo3-asyncio/blob/master/Contributing.md)
+- Contributing Notes: [github](https://github.com/PyO3/pyo3-async-runtimes/blob/main/Contributing.md)
 
 > PyO3 Asyncio is a _brand new_ part of the broader PyO3 ecosystem. Feel free to open any issues for feature requests or bugfixes for this crate.
 
@@ -31,7 +31,7 @@ Like PyO3, PyO3 Asyncio supports the following software versions:
 ## PyO3 Asyncio Primer
 
 If you are working with a Python library that makes use of async functions or wish to provide
-Python bindings for an async Rust library, [`pyo3-asyncio`](https://github.com/davidhewitt/pyo3-asyncio)
+Python bindings for an async Rust library, [`pyo3-async-runtimes`](https://github.com/PyO3/pyo3-async-runtimes)
 likely has the tools you need. It provides conversions between async functions in both Python and
 Rust and was designed with first-class support for popular Rust runtimes such as
 [`tokio`](https://tokio.rs/) and [`async-std`](https://async.rs/). In addition, all async Python
@@ -108,7 +108,8 @@ async fn main() -> PyResult<()> {
 }
 ```
 
-More details on the usage of this library can be found in the [API docs](https://awestlake87.github.io/pyo3-asyncio/master/doc) and the primer below.
+More details on the usage of this library can be found in the API docs
+and the primer below.
 
 #### PyO3 Native Rust Modules
 
@@ -423,7 +424,7 @@ Python allows you to use alternatives to the default `asyncio` event loop. One
 popular alternative is `uvloop`. In `v0.13` using non-standard event loops was
 a bit of an ordeal, but in `v0.14` it's trivial.
 
-#### Using `uvloop` in a PyO3 Asyncio Native Extensions
+#### Using `uvloop` in a PyO3 Native Extensions
 
 ```toml
 # Cargo.toml
@@ -534,7 +535,7 @@ fn main() -> PyResult<()> {
 
 ### Additional Information
 
-- Managing event loop references can be tricky with pyo3-asyncio. See [Event Loop References and ContextVars](https://awestlake87.github.io/pyo3-asyncio/master/doc/pyo3_async_runtimes/#event-loop-references-and-contextvars) in the API docs to get a better intuition for how event loop references are managed in this library.
+- Managing event loop references can be tricky with pyo3-async-runtimes. See [Event Loop References and ContextVars](https://awestlake87.github.io/pyo3-asyncio/master/doc/pyo3_async_runtimes/#event-loop-references-and-contextvars) in the API docs to get a better intuition for how event loop references are managed in this library.
 - Testing pyo3-asyncio libraries and applications requires a custom test harness since Python requires control over the main thread. You can find a testing guide in the [API docs for the `testing` module](https://awestlake87.github.io/pyo3-asyncio/master/doc/pyo3_async_runtimes/testing)
 
 ## Migration Guide
