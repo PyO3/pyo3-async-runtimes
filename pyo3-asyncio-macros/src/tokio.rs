@@ -136,7 +136,7 @@ fn parse_string(int: syn::Lit, span: Span, field: &str) -> Result<String, syn::E
 
 fn parse_knobs(
     input: syn::ItemFn,
-    args: syn::AttributeArgs,
+    args: Vec<syn::Meta>,
     is_test: bool,
     rt_multi_thread: bool,
 ) -> Result<TokenStream, syn::Error> {
@@ -156,7 +156,7 @@ fn parse_knobs(
 
     for arg in args {
         match arg {
-            syn::NestedMeta::Meta(syn::Meta::NameValue(namevalue)) => {
+            syn::Meta::NameValue(namevalue) => {
                 let ident = namevalue.path.get_ident();
                 if ident.is_none() {
                     let msg = "Must have specified ident";
@@ -164,10 +164,24 @@ fn parse_knobs(
                 }
                 match ident.unwrap().to_string().to_lowercase().as_str() {
                     "worker_threads" => {
-                        config.set_worker_threads(namevalue.lit.clone(), namevalue.span())?;
+                        if let syn::Expr::Lit(expr_lit) = &namevalue.value {
+                            config.set_worker_threads(expr_lit.lit.clone(), namevalue.span())?;
+                        } else {
+                            return Err(syn::Error::new_spanned(
+                                &namevalue.value,
+                                "Expected a literal value",
+                            ));
+                        }
                     }
                     "flavor" => {
-                        config.set_flavor(namevalue.lit.clone(), namevalue.span())?;
+                        if let syn::Expr::Lit(expr_lit) = &namevalue.value {
+                            config.set_flavor(expr_lit.lit.clone(), namevalue.span())?;
+                        } else {
+                            return Err(syn::Error::new_spanned(
+                                &namevalue.value,
+                                "Expected a literal value",
+                            ));
+                        }
                     }
                     "core_threads" => {
                         let msg = "Attribute `core_threads` is renamed to `worker_threads`";
@@ -179,7 +193,7 @@ fn parse_knobs(
                     }
                 }
             }
-            syn::NestedMeta::Meta(syn::Meta::Path(path)) => {
+            syn::Meta::Path(path) => {
                 let ident = path.get_ident();
                 if ident.is_none() {
                     let msg = "Must have specified ident";
@@ -279,7 +293,8 @@ fn parse_knobs(
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
 pub(crate) fn main(args: TokenStream, item: TokenStream, rt_multi_thread: bool) -> TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemFn);
-    let args = syn::parse_macro_input!(args as syn::AttributeArgs);
+    let args = syn::parse_macro_input!(args with syn::punctuated::Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated);
+    let args: Vec<syn::Meta> = args.into_iter().collect();
 
     if input.sig.ident == "main" && !input.sig.inputs.is_empty() {
         let msg = "the main function cannot accept arguments";
