@@ -3,7 +3,7 @@
 mod exceptions {
     use pyo3::{create_exception, exceptions::PyException};
 
-    create_exception!(pyo3_asyncio, RustPanic, PyException);
+    create_exception!(pyo3_async_runtimes, RustPanic, PyException);
 }
 
 pub use exceptions::RustPanic;

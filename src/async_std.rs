@@ -8,8 +8,8 @@
 //! are only available when the `unstable-streams` Cargo feature is enabled:
 //!
 //! ```toml
-//! [dependencies.pyo3-asyncio-0-21]
-//! version = "0.21"
+//! [dependencies.pyo3-async-runtimes]
+//! version = "0.22"
 //! features = ["unstable-streams"]
 //! ```
 
