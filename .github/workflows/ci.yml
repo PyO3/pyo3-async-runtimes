@@ -47,15 +47,7 @@ jobs:
       fail-fast: false # If one platform fails, allow the rest to keep testing.
       matrix:
         rust: [stable]
-        python-version:
-          [
-            "3.9",
-            "3.10",
-            "3.11",
-            "3.12",
-            "3.13",
-            "pypy-3.9",
-          ]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.9"]
         platform:
           [
             {
@@ -123,27 +115,9 @@ jobs:
           target: ${{ matrix.platform.rust-target }}
 
       - if: ${{ matrix.msrv == 'MSRV' }}
-        name: Unify MSRV dependencies
+        name: Set MSRV dependencies
         run: |
-          import toml
-          cargo_toml = toml.load("Cargo.toml")
-          cargo_toml["dependencies"]["tokio"]["version"] = "1.38.1"
-          with open("Cargo.toml", "w") as f:
-            toml.dump(cargo_toml, f)
-        shell: python
-      - if: ${{ matrix.msrv == 'MSRV' }}
-        name: Generate lockfile
-        run: cargo generate-lockfile
-      - if: ${{ matrix.msrv == 'MSRV' }}
-        name: Unify dependencies to MSRV-compatible versions
-        run: |
-          import tomllib
-          import subprocess
-          cargo_lock = tomllib.load(open("Cargo.lock", 'rb'))
-          for pkg in cargo_lock["package"]:
-            pkg_id = pkg["name"] + ":" + pkg["version"]
-            if pkg["name"] == "tokio" and pkg["version"] != "1.38.1":
-              subprocess.run(["cargo", "update", "--package", pkg_id, "--precise", "1.38.1"], check=True)
+          cargo add tokio@=1.38.1
 
       - name: Build (no features)
         run: cargo build --no-default-features --verbose --target ${{ matrix.platform.rust-target }}
