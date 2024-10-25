@@ -122,9 +122,28 @@ jobs:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.platform.rust-target }}
 
-      # - if: matrix.platform.os == 'ubuntu-latest'
-      #   name: Prepare LD_LIBRARY_PATH (Ubuntu only)
-      #   run: echo LD_LIBRARY_PATH=${pythonLocation}/lib >> $GIHUB_ENV
+      - if: ${{ matrix.msrv == 'MSRV' }}
+        name: Unify MSRV dependencies
+        run: |
+          import toml
+          cargo_toml = toml.load("Cargo.toml")
+          cargo_toml["dependencies"]["tokio"]["version"] = "1.38.1"
+          with open("Cargo.toml", "w") as f:
+            toml.dump(cargo_toml, f)
+        shell: python
+      - if: ${{ matrix.msrv == 'MSRV' }}
+        name: Generate lockfile
+        run: cargo generate-lockfile
+      - if: ${{ matrix.msrv == 'MSRV' }}
+        name: Unify dependencies to MSRV-compatible versions
+        run: |
+          import toml
+          import subprocess
+          cargo_lock = toml.load("Cargo.lock")
+          for pkg in cargo_lock["package"]:
+            pkg_id = pkg["name"] + ":" + pkg["version"]
+            if pkg["name"] == "tokio" and pkg["version"] != "1.38.1":
+              subprocess.run(["cargo", "update", "--package", pkg_id, "--precise", "1.38.1"], check=True)
 
       - name: Build (no features)
         run: cargo build --no-default-features --verbose --target ${{ matrix.platform.rust-target }}
@@ -132,17 +151,17 @@ jobs:
       - name: Build
         run: cargo build --features=${{env.features}} --verbose --target ${{ matrix.platform.rust-target }}
 
-      # uvloop doesn't compile under Windows, Python 3.11-dev, and PyPy
-      - if: ${{ matrix.platform.os != 'windows-latest' && matrix.python-version != '3.11-dev' && !startsWith(matrix.python-version, 'pypy') }}
+      # uvloop doesn't compile under Windows and PyPy
+      - if: ${{ matrix.platform.os != 'windows-latest' && !startsWith(matrix.python-version, 'pypy') }}
         name: Install pyo3-asyncio test dependencies
         run: |
           python -m pip install -U uvloop
 
-      - if: ${{ matrix.msrv != 'MSRV' && matrix.python-version != '3.11-dev' && !startsWith(matrix.python-version, 'pypy') }}
+      - if: ${{ matrix.msrv != 'MSRV' && !startsWith(matrix.python-version, 'pypy') }}
         name: Test
         run: cargo test --all-features --target ${{ matrix.platform.rust-target }}
 
-      - if: ${{ matrix.msrv == 'MSRV' && matrix.python-version != '3.11-dev' && !startsWith(matrix.python-version, 'pypy') }}
+      - if: ${{ matrix.msrv == 'MSRV' && !startsWith(matrix.python-version, 'pypy') }}
         name: Test (MSRV, --no-default-features)
         run: cargo test --no-default-features --features tokio-runtime,async-std-runtime,attributes,unstable-streams --target ${{ matrix.platform.rust-target }}
 
