@@ -137,9 +137,9 @@ jobs:
       - if: ${{ matrix.msrv == 'MSRV' }}
         name: Unify dependencies to MSRV-compatible versions
         run: |
-          import toml
+          import tomllib
           import subprocess
-          cargo_lock = toml.load("Cargo.lock")
+          cargo_lock = tomllib.load(open("Cargo.lock", 'rb'))
           for pkg in cargo_lock["package"]:
             pkg_id = pkg["name"] + ":" + pkg["version"]
             if pkg["name"] == "tokio" and pkg["version"] != "1.38.1":
