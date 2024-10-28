@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Convert a Python `awaitable` into a Rust Future"><title>into_future in pyo3_async_runtimes::tokio - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="pyo3_async_runtimes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../pyo3_async_runtimes/index.html">pyo3_async_runtimes</a><span class="version">0.22.0</span></h2></div><div class="sidebar-elems"><h2><a href="index.html">In pyo3_async_runtimes::tokio</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Function <a href="../index.html">pyo3_async_runtimes</a>::<wbr><a href="index.html">tokio</a>::<wbr><a class="fn" href="#">into_future</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../src/pyo3_async_runtimes/tokio.rs.html#596-600">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub fn into_future(
+    awaitable: Bound&lt;'_, PyAny&gt;,
+) -&gt; PyResult&lt;impl <a class="trait" href="https://doc.rust-lang.org/1.81.0/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = PyResult&lt;PyObject&gt;&gt; + <a class="trait" href="https://doc.rust-lang.org/1.81.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Convert a Python <code>awaitable</code> into a Rust Future</p>
+<p>This function converts the <code>awaitable</code> into a Python Task using <code>run_coroutine_threadsafe</code>. A
+completion handler sends the result of this Task through a
+<code>futures::channel::oneshot::Sender&lt;PyResult&lt;PyObject&gt;&gt;</code> and the future returned by this function
+simply awaits the result through the <code>futures::channel::oneshot::Receiver&lt;PyResult&lt;PyObject&gt;&gt;</code>.</p>
+<h2 id="arguments"><a class="doc-anchor" href="#arguments">§</a>Arguments</h2>
+<ul>
+<li><code>awaitable</code> - The Python <code>awaitable</code> to be converted</li>
+</ul>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::time::Duration;
+
+<span class="kw">use </span>pyo3::prelude::<span class="kw-2">*</span>;
+
+<span class="kw">const </span>PYTHON_CODE: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str = <span class="string">r#"
+import asyncio
+
+async def py_sleep(duration):
+    await asyncio.sleep(duration)
+"#</span>;
+
+<span class="kw">async fn </span>py_sleep(seconds: f32) -&gt; PyResult&lt;()&gt; {
+    <span class="kw">let </span>test_mod = Python::with_gil(|py| -&gt; PyResult&lt;PyObject&gt; {
+        <span class="prelude-val">Ok</span>(
+            PyModule::from_code_bound(
+                py,
+                PYTHON_CODE,
+                <span class="string">"test_into_future/test_mod.py"</span>,
+                <span class="string">"test_mod"
+            </span>)<span class="question-mark">?
+            </span>.into()
+        )
+    })<span class="question-mark">?</span>;
+
+    Python::with_gil(|py| {
+        pyo3_async_runtimes::tokio::into_future(
+            test_mod
+                .call_method1(py, <span class="string">"py_sleep"</span>, (seconds.into_py(py),))<span class="question-mark">?
+                </span>.into_bound(py),
+        )
+    })<span class="question-mark">?
+    </span>.<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+</div></details></section></div></main></body></html>

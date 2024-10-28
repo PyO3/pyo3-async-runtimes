@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Convert a `!Send` Rust Future into a Python awaitable"><title>local_future_into_py in pyo3_async_runtimes::tokio - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="pyo3_async_runtimes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../pyo3_async_runtimes/index.html">pyo3_async_runtimes</a><span class="version">0.22.0</span></h2></div><div class="sidebar-elems"><h2><a href="index.html">In pyo3_async_runtimes::tokio</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Function <a href="../index.html">pyo3_async_runtimes</a>::<wbr><a href="index.html">tokio</a>::<wbr><a class="fn" href="#">local_future_into_py</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../src/pyo3_async_runtimes/tokio.rs.html#540-546">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub fn local_future_into_py&lt;F, T&gt;(
+    py: Python&lt;'_&gt;,
+    fut: F,
+) -&gt; PyResult&lt;Bound&lt;'_, PyAny&gt;&gt;<div class="where">where
+    F: <a class="trait" href="https://doc.rust-lang.org/1.81.0/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = PyResult&lt;T&gt;&gt; + 'static,
+    T: IntoPy&lt;PyObject&gt;,</div></code></pre><span class="item-info"><div class="stab deprecated"><span class="emoji">👎</span><span>Deprecated since 0.18.0: Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)</span></div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Convert a <code>!Send</code> Rust Future into a Python awaitable</p>
+<p>If the <code>asyncio.Future</code> returned by this conversion is cancelled via <code>asyncio.Future.cancel</code>,
+the Rust future will be cancelled as well (new behaviour in <code>v0.15</code>).</p>
+<p>Python <code>contextvars</code> are preserved when calling async Python functions within the Rust future
+via <a href="fn.into_future.html" title="fn pyo3_async_runtimes::tokio::into_future"><code>into_future</code></a> (new behaviour in <code>v0.15</code>).</p>
+<blockquote>
+<p>Although <code>contextvars</code> are preserved for async Python functions, synchronous functions will
+unfortunately fail to resolve them when called within the Rust future. This is because the
+function is being called from a Rust thread, not inside an actual Python coroutine context.</p>
+<p>As a workaround, you can get the <code>contextvars</code> from the current task locals using
+<a href="fn.get_current_locals.html" title="fn pyo3_async_runtimes::tokio::get_current_locals"><code>get_current_locals</code></a> and <a href="../struct.TaskLocals.html#method.context" title="method pyo3_async_runtimes::TaskLocals::context"><code>TaskLocals::context</code></a>, then wrap your
+synchronous function in a call to <code>contextvars.Context.run</code>. This will set the context, call the
+synchronous function, and restore the previous context when it returns or raises an exception.</p>
+</blockquote>
+<h2 id="arguments"><a class="doc-anchor" href="#arguments">§</a>Arguments</h2>
+<ul>
+<li><code>py</code> - The current PyO3 GIL guard</li>
+<li><code>fut</code> - The Rust future to be converted</li>
+</ul>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::{rc::Rc, time::Duration};
+
+<span class="kw">use </span>pyo3::prelude::<span class="kw-2">*</span>;
+
+<span class="doccomment">/// Awaitable non-send sleep function
+</span><span class="attr">#[pyfunction]
+</span><span class="kw">fn </span>sleep_for(py: Python, secs: u64) -&gt; PyResult&lt;Bound&lt;PyAny&gt;&gt; {
+    <span class="comment">// Rc is non-send so it cannot be passed into pyo3_async_runtimes::tokio::future_into_py
+    </span><span class="kw">let </span>secs = Rc::new(secs);
+    pyo3_async_runtimes::tokio::local_future_into_py(py, <span class="kw">async move </span>{
+        tokio::time::sleep(Duration::from_secs(<span class="kw-2">*</span>secs)).<span class="kw">await</span>;
+        <span class="prelude-val">Ok</span>(())
+    })
+}
+
+<span class="attr">#[pyo3_async_runtimes::tokio::main]
+</span><span class="kw">async fn </span>main() -&gt; PyResult&lt;()&gt; {
+    <span class="kw">let </span>locals = Python::with_gil(|py| {
+        pyo3_async_runtimes::tokio::get_current_locals(py).unwrap()
+    });
+
+    <span class="comment">// the main coroutine is running in a Send context, so we cannot use LocalSet here. Instead
+    // we use spawn_blocking in order to use LocalSet::block_on
+    </span>tokio::task::spawn_blocking(<span class="kw">move </span>|| {
+        <span class="comment">// LocalSet allows us to work with !Send futures within tokio. Without it, any calls to
+        // pyo3_async_runtimes::tokio::local_future_into_py will panic.
+        </span>tokio::task::LocalSet::new().block_on(
+            pyo3_async_runtimes::tokio::get_runtime(),
+            pyo3_async_runtimes::tokio::scope_local(locals, <span class="kw">async </span>{
+                Python::with_gil(|py| {
+                    <span class="kw">let </span>py_future = sleep_for(py, <span class="number">1</span>)<span class="question-mark">?</span>;
+                    pyo3_async_runtimes::tokio::into_future(py_future)
+                })<span class="question-mark">?
+                </span>.<span class="kw">await</span><span class="question-mark">?</span>;
+
+                <span class="prelude-val">Ok</span>(())
+            })
+        )
+    }).<span class="kw">await</span>.unwrap()
+}</code></pre></div>
+</div></details></section></div></main></body></html>
