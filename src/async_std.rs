@@ -9,7 +9,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["unstable-streams"]
 //! ```
 
@@ -272,14 +272,14 @@ where
 ///     )
 /// }
 /// ```
-pub fn future_into_py_with_locals<F, T>(
+pub fn future_into_py_with_locals<'py, F, T>(
     py: Python,
     locals: TaskLocals,
     fut: F,
 ) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     generic::future_into_py_with_locals::<AsyncStdRuntime, F, T>(py, locals, fut)
 }
@@ -322,10 +322,10 @@ where
 ///     })
 /// }
 /// ```
-pub fn future_into_py<F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
+pub fn future_into_py<'py, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     generic::future_into_py::<AsyncStdRuntime, _, T>(py, fut)
 }
@@ -393,14 +393,14 @@ where
     note = "Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)"
 )]
 #[allow(deprecated)]
-pub fn local_future_into_py_with_locals<F, T>(
+pub fn local_future_into_py_with_locals<'py, F, T>(
     py: Python,
     locals: TaskLocals,
     fut: F,
 ) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + 'static,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     generic::local_future_into_py_with_locals::<AsyncStdRuntime, _, T>(py, locals, fut)
 }
@@ -463,10 +463,10 @@ where
     note = "Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)"
 )]
 #[allow(deprecated)]
-pub fn local_future_into_py<F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
+pub fn local_future_into_py<'py, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + 'static,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     generic::local_future_into_py::<AsyncStdRuntime, _, T>(py, fut)
 }

@@ -300,7 +300,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["attributes"]
 //! ```
 //!
@@ -313,7 +313,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["async-std-runtime"]
 //! ```
 //!
@@ -326,7 +326,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["tokio-runtime"]
 //! ```
 //!
@@ -339,7 +339,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["testing"]
 //! ```
 
@@ -364,7 +364,7 @@ pub mod generic;
 
 #[pymodule]
 fn pyo3_async_runtimes(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    m.add("RustPanic", py.get_type_bound::<err::RustPanic>())?;
+    m.add("RustPanic", py.get_type::<err::RustPanic>())?;
     Ok(())
 }
 
@@ -442,7 +442,7 @@ fn close(event_loop: Bound<PyAny>) -> PyResult<()> {
 
 fn asyncio(py: Python) -> PyResult<&Bound<PyAny>> {
     ASYNCIO
-        .get_or_try_init(|| Ok(py.import_bound("asyncio")?.into()))
+        .get_or_try_init(|| Ok(py.import("asyncio")?.into()))
         .map(|asyncio| asyncio.bind(py))
 }
 
@@ -464,7 +464,7 @@ pub fn get_running_loop(py: Python) -> PyResult<Bound<PyAny>> {
 
 fn contextvars(py: Python) -> PyResult<&Bound<PyAny>> {
     Ok(CONTEXTVARS
-        .get_or_try_init(|| py.import_bound("contextvars").map(|m| m.into()))?
+        .get_or_try_init(|| py.import("contextvars").map(|m| m.into()))?
         .bind(py))
 }
 
@@ -576,14 +576,14 @@ impl PyEnsureFuture {
     }
 }
 
-fn call_soon_threadsafe(
-    event_loop: &Bound<PyAny>,
+fn call_soon_threadsafe<'py>(
+    event_loop: &'py Bound<PyAny>,
     context: &Bound<PyAny>,
-    args: impl IntoPy<Py<PyTuple>>,
+    args: impl IntoPyObject<'py, Target = PyTuple>,
 ) -> PyResult<()> {
     let py = event_loop.py();
 
-    let kwargs = PyDict::new_bound(py);
+    let kwargs = PyDict::new(py);
     kwargs.set_item("context", context)?;
 
     event_loop.call_method("call_soon_threadsafe", args, Some(&kwargs))?;
@@ -661,7 +661,7 @@ pub fn into_future_with_locals(
         match rx.await {
             Ok(item) => item,
             Err(_) => Python::with_gil(|py| {
-                Err(PyErr::from_value_bound(
+                Err(PyErr::from_value(
                     asyncio(py)?.call_method0("CancelledError")?,
                 ))
             }),

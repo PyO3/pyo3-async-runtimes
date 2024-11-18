@@ -9,11 +9,12 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["unstable-streams"]
 //! ```
 
 use std::{
+    ffi::CString,
     future::Future,
     pin::Pin,
     sync::{Arc, Mutex},
@@ -31,6 +32,7 @@ use futures::{channel::mpsc, SinkExt};
 use once_cell::sync::OnceCell;
 use pin_project_lite::pin_project;
 use pyo3::prelude::*;
+use pyo3::BoundObject;
 #[cfg(feature = "unstable-streams")]
 use std::marker::PhantomData;
 
@@ -347,8 +349,11 @@ fn set_result(
     let none = py.None().into_bound(py);
 
     let (complete, val) = match result {
-        Ok(val) => (future.getattr("set_result")?, val.into_py(py)),
-        Err(err) => (future.getattr("set_exception")?, err.into_py(py)),
+        Ok(val) => (future.getattr("set_result")?, val.into_pyobject(py)?),
+        Err(err) => (
+            future.getattr("set_exception")?,
+            err.into_pyobject(py)?.into_any(),
+        ),
     };
     call_soon_threadsafe(event_loop, &none, (CheckedCompletor, future, complete, val))?;
 
@@ -573,7 +578,7 @@ where
 /// }
 /// ```
 #[allow(unused_must_use)]
-pub fn future_into_py_with_locals<R, F, T>(
+pub fn future_into_py_with_locals<'py, R, F, T>(
     py: Python,
     locals: TaskLocals,
     fut: F,
@@ -581,7 +586,7 @@ pub fn future_into_py_with_locals<R, F, T>(
 where
     R: Runtime + ContextExt,
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
@@ -617,7 +622,7 @@ where
                 let _ = set_result(
                     &locals2.event_loop(py),
                     future_tx1.bind(py),
-                    result.map(|val| val.into_py(py)),
+                    result.map(|val| val.into_pyobject(py).unwrap()),
                 )
                 .map_err(dump_err(py));
             });
@@ -686,10 +691,10 @@ impl<T> Cancellable<T> {
     }
 }
 
-impl<F, T> Future for Cancellable<F>
+impl<'py, F, T> Future for Cancellable<F>
 where
     F: Future<Output = PyResult<T>>,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     type Output = F::Output;
 
@@ -840,11 +845,11 @@ impl PyDoneCallback {
 ///     })
 /// }
 /// ```
-pub fn future_into_py<R, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
+pub fn future_into_py<'py, R, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     R: Runtime + ContextExt,
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     future_into_py_with_locals::<R, F, T>(py, get_current_locals::<R>(py)?, fut)
 }
@@ -978,7 +983,7 @@ where
     note = "Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)"
 )]
 #[allow(unused_must_use)]
-pub fn local_future_into_py_with_locals<R, F, T>(
+pub fn local_future_into_py_with_locals<'py, R, F, T>(
     py: Python,
     locals: TaskLocals,
     fut: F,
@@ -986,7 +991,7 @@ pub fn local_future_into_py_with_locals<R, F, T>(
 where
     R: Runtime + SpawnLocalExt + LocalContextExt,
     F: Future<Output = PyResult<T>> + 'static,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
@@ -1179,11 +1184,11 @@ where
     note = "Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)"
 )]
 #[allow(deprecated)]
-pub fn local_future_into_py<R, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
+pub fn local_future_into_py<'py, R, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     R: Runtime + ContextExt + SpawnLocalExt + LocalContextExt,
     F: Future<Output = PyResult<T>> + 'static,
-    T: IntoPy<PyObject>,
+    T: IntoPyObject<'py>,
 {
     local_future_into_py_with_locals::<R, F, T>(py, get_current_locals::<R>(py)?, fut)
 }
@@ -1502,15 +1507,20 @@ where
 #[pyclass]
 struct SenderGlue {
     locals: TaskLocals,
-    tx: Box<dyn Sender>,
+    tx: Arc<Mutex<dyn Sender>>,
 }
 #[pymethods]
 impl SenderGlue {
     pub fn send(&mut self, item: PyObject) -> PyResult<PyObject> {
-        Python::with_gil(|py| self.tx.send(py, self.locals.clone_ref(py), item))
+        Python::with_gil(|py| {
+            self.tx
+                .lock()
+                .unwrap()
+                .send(py, self.locals.clone_ref(py), item)
+        })
     }
     pub fn close(&mut self) -> PyResult<()> {
-        self.tx.close()
+        self.tx.lock().unwrap().close()
     }
 }
 
@@ -1648,11 +1658,11 @@ where
     let py = gen.py();
     let glue = GLUE_MOD
         .get_or_try_init(|| -> PyResult<PyObject> {
-            Ok(PyModule::from_code_bound(
+            Ok(PyModule::from_code(
                 py,
-                STREAM_GLUE,
-                "pyo3_async_runtimes/pyo3_async_runtimes_glue.py",
-                "pyo3_async_runtimes_glue",
+                &CString::new(STREAM_GLUE).unwrap(),
+                &CString::new("pyo3_async_runtimes/pyo3_async_runtimes_glue.py").unwrap(),
+                &CString::new("pyo3_async_runtimes_glue").unwrap(),
             )?
             .into())
         })?
@@ -1670,10 +1680,10 @@ where
                     gen,
                     SenderGlue {
                         locals,
-                        tx: Box::new(GenericSender {
+                        tx: Arc::new(Mutex::new(GenericSender {
                             runtime: PhantomData::<R>,
                             tx,
-                        }),
+                        })),
                     },
                 ),
             )?,

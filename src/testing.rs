@@ -64,7 +64,7 @@
 //! Also add the `testing` and `attributes` features to the `pyo3-async-runtimes` dependency and select your preferred runtime:
 //!
 //! ```toml
-//! pyo3-async-runtimes = { version = "0.22", features = ["testing", "attributes", "async-std-runtime"] }
+//! pyo3-async-runtimes = { version = "0.23", features = ["testing", "attributes", "async-std-runtime"] }
 //! ```
 //!
 //! At this point, you should be able to run the test via `cargo test`
