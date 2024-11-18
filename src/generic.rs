@@ -201,7 +201,7 @@ where
     let py = event_loop.py();
     let result_tx = Arc::new(Mutex::new(None));
     let result_rx = Arc::clone(&result_tx);
-    let coro = future_into_py_with_locals::<R, _, (), _>(
+    let coro = future_into_py_with_locals::<R, _, ()>(
         py,
         TaskLocals::new(event_loop.clone()).copy_context(py)?,
         async move {
@@ -578,7 +578,7 @@ where
 /// }
 /// ```
 #[allow(unused_must_use)]
-pub fn future_into_py_with_locals<R, F, T, P>(
+pub fn future_into_py_with_locals<R, F, T>(
     py: Python,
     locals: TaskLocals,
     fut: F,
@@ -586,8 +586,7 @@ pub fn future_into_py_with_locals<R, F, T, P>(
 where
     R: Runtime + ContextExt,
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py, Target = P>,
-    P: AsRef<PyAny>,
+    T: for<'py> IntoPyObject<'py>,
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
@@ -623,8 +622,9 @@ where
                 let _ = set_result(
                     &locals2.event_loop(py),
                     future_tx1.bind(py),
-                    result.and_then(|val| {
-                        Ok(val.into_pyobject(py).map_err(Into::into)?.unbind().into())
+                    result.and_then(|val| match val.into_pyobject(py) {
+                        Ok(obj) => Ok(obj.into_any().unbind()),
+                        Err(err) => Err(err.into()),
                     }),
                 )
                 .map_err(dump_err(py));
@@ -848,14 +848,13 @@ impl PyDoneCallback {
 ///     })
 /// }
 /// ```
-pub fn future_into_py<R, F, T, P>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
+pub fn future_into_py<R, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     R: Runtime + ContextExt,
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py, Target = P>,
-    P: AsRef<PyAny>,
+    T: for<'py> IntoPyObject<'py>,
 {
-    future_into_py_with_locals::<R, F, T, P>(py, get_current_locals::<R>(py)?, fut)
+    future_into_py_with_locals::<R, F, T>(py, get_current_locals::<R>(py)?, fut)
 }
 
 /// Convert a `!Send` Rust Future into a Python awaitable with a generic runtime and manual
@@ -987,7 +986,7 @@ where
     note = "Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)"
 )]
 #[allow(unused_must_use)]
-pub fn local_future_into_py_with_locals<R, F, T, P>(
+pub fn local_future_into_py_with_locals<R, F, T>(
     py: Python,
     locals: TaskLocals,
     fut: F,
@@ -995,8 +994,7 @@ pub fn local_future_into_py_with_locals<R, F, T, P>(
 where
     R: Runtime + SpawnLocalExt + LocalContextExt,
     F: Future<Output = PyResult<T>> + 'static,
-    T: for<'py> IntoPyObject<'py, Target = P>,
-    P: AsRef<PyAny>,
+    T: for<'py> IntoPyObject<'py>,
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
@@ -1032,8 +1030,9 @@ where
                 let _ = set_result(
                     locals2.event_loop.bind(py),
                     future_tx1.bind(py),
-                    result.and_then(|val| {
-                        Ok(val.into_pyobject(py).map_err(Into::into)?.unbind().into())
+                    result.and_then(|val| match val.into_pyobject(py) {
+                        Ok(obj) => Ok(obj.into_any().unbind()),
+                        Err(err) => Err(err.into()),
                     }),
                 )
                 .map_err(dump_err(py));
@@ -1191,14 +1190,13 @@ where
     note = "Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)"
 )]
 #[allow(deprecated)]
-pub fn local_future_into_py<R, F, T, P>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
+pub fn local_future_into_py<R, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     R: Runtime + ContextExt + SpawnLocalExt + LocalContextExt,
     F: Future<Output = PyResult<T>> + 'static,
-    T: for<'py> IntoPyObject<'py, Target = P>,
-    P: AsRef<PyAny>,
+    T: for<'py> IntoPyObject<'py>,
 {
-    local_future_into_py_with_locals::<R, F, T, P>(py, get_current_locals::<R>(py)?, fut)
+    local_future_into_py_with_locals::<R, F, T>(py, get_current_locals::<R>(py)?, fut)
 }
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>unstable-streams</code></span> Convert an async generator into a stream
@@ -1480,34 +1478,34 @@ where
 {
     fn send(&mut self, py: Python, locals: TaskLocals, item: PyObject) -> PyResult<PyObject> {
         match self.tx.try_send(item.clone_ref(py)) {
-            Ok(_) => Ok(true.into_pyobject(py)?.as_ref().unbind()),
+            Ok(_) => Ok(true.into_pyobject(py)?.into_any().unbind()),
             Err(e) => {
                 if e.is_full() {
                     let mut tx = self.tx.clone();
                     Python::with_gil(move |py| {
-                        Ok(future_into_py_with_locals::<R, _, PyObject, _>(
-                            py,
-                            locals,
-                            async move {
+                        Ok(
+                            future_into_py_with_locals::<R, _, PyObject>(py, locals, async move {
                                 if tx.flush().await.is_err() {
                                     // receiving side disconnected
                                     return Python::with_gil(|py| {
-                                        Ok(false.into_pyobject(py)?.as_ref().unbind())
+                                        Ok(false.into_pyobject(py)?.into_any().unbind())
                                     });
                                 }
                                 if tx.send(item).await.is_err() {
                                     // receiving side disconnected
                                     return Python::with_gil(|py| {
-                                        Ok(false.into_pyobject(py)?.as_ref().unbind())
+                                        Ok(false.into_pyobject(py)?.into_any().unbind())
                                     });
                                 }
-                                Python::with_gil(|py| Ok(true.into_pyobject(py)?.as_ref().unbind()))
-                            },
-                        )?
-                        .into())
+                                Python::with_gil(|py| {
+                                    Ok(true.into_pyobject(py)?.into_any().unbind())
+                                })
+                            })?
+                            .into(),
+                        )
                     })
                 } else {
-                    Ok(false.into_pyobject(py)?.as_ref().unbind())
+                    Ok(false.into_pyobject(py)?.into_any().unbind())
                 }
             }
         }

@@ -272,17 +272,16 @@ where
 ///     )
 /// }
 /// ```
-pub fn future_into_py_with_locals<F, T, P>(
+pub fn future_into_py_with_locals<F, T>(
     py: Python,
     locals: TaskLocals,
     fut: F,
 ) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py, Target = P>,
-    P: AsRef<PyAny>,
+    T: for<'py> IntoPyObject<'py>,
 {
-    generic::future_into_py_with_locals::<AsyncStdRuntime, F, T, P>(py, locals, fut)
+    generic::future_into_py_with_locals::<AsyncStdRuntime, F, T>(py, locals, fut)
 }
 
 /// Convert a Rust Future into a Python awaitable
@@ -323,13 +322,12 @@ where
 ///     })
 /// }
 /// ```
-pub fn future_into_py<F, T, P>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
+pub fn future_into_py<F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py, Target = P>,
-    P: AsRef<PyAny>,
+    T: for<'py> IntoPyObject<'py>,
 {
-    generic::future_into_py::<AsyncStdRuntime, _, T, P>(py, fut)
+    generic::future_into_py::<AsyncStdRuntime, _, T>(py, fut)
 }
 
 /// Convert a `!Send` Rust Future into a Python awaitable
@@ -395,17 +393,16 @@ where
     note = "Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)"
 )]
 #[allow(deprecated)]
-pub fn local_future_into_py_with_locals<F, T, P>(
+pub fn local_future_into_py_with_locals<F, T>(
     py: Python,
     locals: TaskLocals,
     fut: F,
 ) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + 'static,
-    T: for<'py> IntoPyObject<'py, Target = P>,
-    P: AsRef<PyAny>,
+    T: for<'py> IntoPyObject<'py>,
 {
-    generic::local_future_into_py_with_locals::<AsyncStdRuntime, _, T, P>(py, locals, fut)
+    generic::local_future_into_py_with_locals::<AsyncStdRuntime, _, T>(py, locals, fut)
 }
 
 /// Convert a `!Send` Rust Future into a Python awaitable
@@ -466,13 +463,12 @@ where
     note = "Questionable whether these conversions have real-world utility (see https://github.com/awestlake87/pyo3-asyncio/issues/59#issuecomment-1008038497 and let me know if you disagree!)"
 )]
 #[allow(deprecated)]
-pub fn local_future_into_py<F, T, P>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
+pub fn local_future_into_py<F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + 'static,
-    T: for<'py> IntoPyObject<'py, Target = P>,
-    P: AsRef<PyAny>,
+    T: for<'py> IntoPyObject<'py>,
 {
-    generic::local_future_into_py::<AsyncStdRuntime, _, T, _>(py, fut)
+    generic::local_future_into_py::<AsyncStdRuntime, _, T>(py, fut)
 }
 
 /// Convert a Python `awaitable` into a Rust Future
