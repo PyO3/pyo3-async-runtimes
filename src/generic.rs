@@ -1480,7 +1480,7 @@ where
 {
     fn send(&mut self, py: Python, locals: TaskLocals, item: PyObject) -> PyResult<PyObject> {
         match self.tx.try_send(item.clone_ref(py)) {
-            Ok(_) => true.into_pyobject(py),
+            Ok(_) => Ok(true.into_pyobject(py)?.as_ref().unbind()),
             Err(e) => {
                 if e.is_full() {
                     let mut tx = self.tx.clone();
@@ -1491,19 +1491,23 @@ where
                             async move {
                                 if tx.flush().await.is_err() {
                                     // receiving side disconnected
-                                    return Python::with_gil(|py| Ok(false));
+                                    return Python::with_gil(|py| {
+                                        Ok(false.into_pyobject(py)?.as_ref().unbind())
+                                    });
                                 }
                                 if tx.send(item).await.is_err() {
                                     // receiving side disconnected
-                                    return Python::with_gil(|py| Ok(false));
+                                    return Python::with_gil(|py| {
+                                        Ok(false.into_pyobject(py)?.as_ref().unbind())
+                                    });
                                 }
-                                Python::with_gil(|py| Ok(true))
+                                Python::with_gil(|py| Ok(true.into_pyobject(py)?.as_ref().unbind()))
                             },
                         )?
                         .into())
                     })
                 } else {
-                    Ok(false.into_py(py))
+                    Ok(false.into_pyobject(py)?.as_ref().unbind())
                 }
             }
         }
