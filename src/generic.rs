@@ -14,7 +14,6 @@
 //! ```
 
 use std::{
-    ffi::CString,
     future::Future,
     pin::Pin,
     sync::{Arc, Mutex},
@@ -1666,6 +1665,8 @@ pub fn into_stream_with_locals_v2<R>(
 where
     R: Runtime + ContextExt,
 {
+    use std::ffi::CString;
+
     static GLUE_MOD: OnceCell<PyObject> = OnceCell::new();
     let py = gen.py();
     let glue = GLUE_MOD
