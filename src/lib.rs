@@ -619,11 +619,11 @@ fn call_soon_threadsafe<'py>(
 /// async fn py_sleep(seconds: f32) -> PyResult<()> {
 ///     let test_mod = Python::with_gil(|py| -> PyResult<PyObject> {
 ///         Ok(
-///             PyModule::from_code_bound(
+///             PyModule::from_code(
 ///                 py,
-///                 PYTHON_CODE,
-///                 "test_into_future/test_mod.py",
-///                 "test_mod"
+///                 &CString::new(PYTHON_CODE).unwrap(),
+///                 &CString::new("test_into_future/test_mod.py").unwrap(),
+///                 &CString::new("test_mod").unwrap(),
 ///             )?
 ///             .into()
 ///         )

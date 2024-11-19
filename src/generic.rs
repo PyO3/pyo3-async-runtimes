@@ -372,6 +372,7 @@ fn set_result(
 ///
 /// ```no_run
 /// # use std::{any::Any, pin::Pin, future::Future, task::{Context, Poll}, time::Duration};
+/// # use std::ffi::CString;
 /// #
 /// # use pyo3::prelude::*;
 /// #
@@ -443,11 +444,11 @@ fn set_result(
 /// async fn py_sleep(seconds: f32) -> PyResult<()> {
 ///     let test_mod = Python::with_gil(|py| -> PyResult<PyObject> {
 ///         Ok(
-///             PyModule::from_code_bound(
+///             PyModule::from_code(
 ///                 py,
-///                 PYTHON_CODE,
-///                 "test_into_future/test_mod.py",
-///                 "test_mod"
+///                 &CString::new(PYTHON_CODE).unwrap(),
+///                 &CString::new("test_into_future/test_mod.py").unwrap(),
+///                 &CString::new("test_mod").unwrap(),
 ///             )?
 ///             .into()
 ///         )
@@ -1266,6 +1267,7 @@ where
 ///
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio
@@ -1278,11 +1280,11 @@ where
 ///
 /// # async fn test_async_gen() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
-///     let test_mod = PyModule::from_code_bound(
+///     let test_mod = PyModule::from_code(
 ///         py,
-///         TEST_MOD,
-///         "test_rust_coroutine/test_mod.py",
-///         "test_mod",
+///         &CString::new(TEST_MOD).unwrap(),
+///         &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+///         &CString::new("test_mod").unwrap(),
 ///     )?;
 ///
 ///     pyo3_async_runtimes::generic::into_stream_with_locals_v1::<MyCustomRuntime>(
@@ -1414,6 +1416,7 @@ where
 ///
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio
@@ -1426,11 +1429,11 @@ where
 ///
 /// # async fn test_async_gen() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
-///     let test_mod = PyModule::from_code_bound(
+///     let test_mod = PyModule::from_code(
 ///         py,
-///         TEST_MOD,
-///         "test_rust_coroutine/test_mod.py",
-///         "test_mod",
+///         &CString::new(TEST_MOD).unwrap(),
+///         &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+///         &CString::new("test_mod").unwrap(),
 ///     )?;
 ///
 ///     pyo3_async_runtimes::generic::into_stream_v1::<MyCustomRuntime>(test_mod.call_method0("gen")?)
@@ -1622,6 +1625,7 @@ async def forward(gen, sender):
 ///
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio
@@ -1634,11 +1638,11 @@ async def forward(gen, sender):
 ///
 /// # async fn test_async_gen() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
-///     let test_mod = PyModule::from_code_bound(
+///     let test_mod = PyModule::from_code(
 ///         py,
-///         TEST_MOD,
-///         "test_rust_coroutine/test_mod.py",
-///         "test_mod",
+///         &CString::new(TEST_MOD).unwrap(),
+///         &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+///         &CString::new("test_mod").unwrap(),
 ///     )?;
 ///
 ///     pyo3_async_runtimes::generic::into_stream_with_locals_v2::<MyCustomRuntime>(
@@ -1772,6 +1776,7 @@ where
 ///
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio
@@ -1784,11 +1789,11 @@ where
 ///
 /// # async fn test_async_gen() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
-///     let test_mod = PyModule::from_code_bound(
+///     let test_mod = PyModule::from_code(
 ///         py,
-///         TEST_MOD,
-///         "test_rust_coroutine/test_mod.py",
-///         "test_mod",
+///         &CString::new(TEST_MOD).unwrap(),
+///         &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+///         &CString::new("test_mod").unwrap(),
 ///     )?;
 ///
 ///     pyo3_async_runtimes::generic::into_stream_v2::<MyCustomRuntime>(test_mod.call_method0("gen")?)
