@@ -605,6 +605,7 @@ fn call_soon_threadsafe<'py>(
 ///
 /// ```
 /// use std::time::Duration;
+/// use std::ffi::CString;
 ///
 /// use pyo3::prelude::*;
 ///
@@ -633,7 +634,7 @@ fn call_soon_threadsafe<'py>(
 ///         pyo3_async_runtimes::into_future_with_locals(
 ///             &pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
+///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
 ///                 .into_bound(py),
 ///         )
 ///     })?

@@ -457,7 +457,7 @@ fn set_result(
 ///     Python::with_gil(|py| {
 ///         pyo3_async_runtimes::generic::into_future::<MyCustomRuntime>(
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
+///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
 ///                 .into_bound(py),
 ///         )
 ///     })?

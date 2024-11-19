@@ -69,7 +69,7 @@ async fn main() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
         let asyncio = py.import("asyncio")?;
         // convert asyncio.sleep into a Rust Future
-        pyo3_async_runtimes::async_std::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
+        pyo3_async_runtimes::async_std::into_future(asyncio.call_method1("sleep", (1.into_pyobject(py).unwrap(),))?)
     })?;
 
     fut.await?;
@@ -99,7 +99,7 @@ async fn main() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
         let asyncio = py.import("asyncio")?;
         // convert asyncio.sleep into a Rust Future
-        pyo3_async_runtimes::tokio::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
+        pyo3_async_runtimes::tokio::into_future(asyncio.call_method1("sleep", (1.into_pyobject(py).unwrap(),))?)
     })?;
 
     fut.await?;
@@ -363,7 +363,7 @@ async fn main() -> PyResult<()> {
 
         // convert asyncio.sleep into a Rust Future
         pyo3_async_runtimes::async_std::into_future(
-            asyncio.call_method1("sleep", (1.into_py(py),))?
+            asyncio.call_method1("sleep", (1.into_pyobject(py).unwrap(),))?
         )
     })?;
 

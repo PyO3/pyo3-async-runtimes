@@ -512,7 +512,7 @@ where
 ///     Python::with_gil(|py| {
 ///         pyo3_async_runtimes::async_std::into_future(
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
+///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
 ///                 .into_bound(py),
 ///         )
 ///     })?
@@ -539,6 +539,7 @@ pub fn into_future(
 /// ```
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio

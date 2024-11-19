@@ -586,7 +586,7 @@ where
 ///     Python::with_gil(|py| {
 ///         pyo3_async_runtimes::tokio::into_future(
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
+///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
 ///                 .into_bound(py),
 ///         )
 ///     })?
