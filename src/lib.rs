@@ -577,7 +577,7 @@ impl PyEnsureFuture {
 }
 
 fn call_soon_threadsafe<'py>(
-    event_loop: &'py Bound<PyAny>,
+    event_loop: &Bound<'py, PyAny>,
     context: &Bound<PyAny>,
     args: impl IntoPyObject<'py, Target = PyTuple>,
 ) -> PyResult<()> {
