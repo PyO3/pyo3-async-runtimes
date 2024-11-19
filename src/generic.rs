@@ -182,7 +182,7 @@ where
 /// # use pyo3::prelude::*;
 /// #
 /// # Python::with_gil(|py| -> PyResult<()> {
-/// # let event_loop = py.import_bound("asyncio")?.call_method0("new_event_loop")?;
+/// # let event_loop = py.import("asyncio")?.call_method0("new_event_loop")?;
 /// # #[cfg(feature = "tokio-runtime")]
 /// pyo3_async_runtimes::generic::run_until_complete::<MyCustomRuntime, _, _>(&event_loop, async move {
 ///     tokio::time::sleep(Duration::from_secs(1)).await;

@@ -100,7 +100,7 @@
 //!             // event loop from earlier.
 //!             pyo3_async_runtimes::into_future_with_locals(
 //!                 &locals,
-//!                 py.import_bound("asyncio")?.call_method1("sleep", (1,))?
+//!                 py.import("asyncio")?.call_method1("sleep", (1,))?
 //!             )
 //!         })?;
 //!
@@ -169,7 +169,7 @@
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     // Now we can get the current locals through task-local data
 //!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
-//!                     py.import_bound("asyncio")?.call_method1("sleep", (1,))?
+//!                     py.import("asyncio")?.call_method1("sleep", (1,))?
 //!                 )
 //!             })?;
 //!
@@ -244,7 +244,7 @@
 //!     pyo3_async_runtimes::tokio::future_into_py(py, async move {
 //!         let py_sleep = Python::with_gil(|py| {
 //!             pyo3_async_runtimes::tokio::into_future(
-//!                 py.import_bound("asyncio")?.call_method1("sleep", (1,))?
+//!                 py.import("asyncio")?.call_method1("sleep", (1,))?
 //!             )
 //!         })?;
 //!

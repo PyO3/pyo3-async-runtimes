@@ -12,7 +12,7 @@ fn main() {
     pyo3::prepare_freethreaded_python();
 
     Python::with_gil(|py| {
-        let asyncio = py.import_bound("asyncio")?;
+        let asyncio = py.import("asyncio")?;
 
         let event_loop = asyncio.call_method0("new_event_loop")?;
         asyncio.call_method1("set_event_loop", (&event_loop,))?;

@@ -176,7 +176,7 @@ pub fn get_current_locals(py: Python) -> PyResult<TaskLocals> {
 /// # pyo3::prepare_freethreaded_python();
 /// #
 /// # Python::with_gil(|py| -> PyResult<()> {
-/// # let event_loop = py.import_bound("asyncio")?.call_method0("new_event_loop")?;
+/// # let event_loop = py.import("asyncio")?.call_method0("new_event_loop")?;
 /// pyo3_async_runtimes::async_std::run_until_complete(event_loop, async move {
 ///     async_std::task::sleep(Duration::from_secs(1)).await;
 ///     Ok(())

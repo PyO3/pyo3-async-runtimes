@@ -67,7 +67,7 @@ use pyo3::prelude::*;
 #[pyo3_async_runtimes::async_std::main]
 async fn main() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
-        let asyncio = py.import_bound("asyncio")?;
+        let asyncio = py.import("asyncio")?;
         // convert asyncio.sleep into a Rust Future
         pyo3_async_runtimes::async_std::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
     })?;
@@ -97,7 +97,7 @@ use pyo3::prelude::*;
 #[pyo3_async_runtimes::tokio::main]
 async fn main() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
-        let asyncio = py.import_bound("asyncio")?;
+        let asyncio = py.import("asyncio")?;
         // convert asyncio.sleep into a Rust Future
         pyo3_async_runtimes::tokio::into_future(asyncio.call_method1("sleep", (1.into_py(py),))?)
     })?;
@@ -240,7 +240,7 @@ use pyo3::prelude::*;
 async fn main() -> PyResult<()> {
     let future = Python::with_gil(|py| -> PyResult<_> {
         // import the module containing the py_sleep function
-        let example = py.import_bound("example")?;
+        let example = py.import("example")?;
 
         // calling the py_sleep method like a normal function
         // returns a coroutine
@@ -359,7 +359,7 @@ async fn main() -> PyResult<()> {
     // PyO3 is initialized - Ready to go
 
     let fut = Python::with_gil(|py| -> PyResult<_> {
-        let asyncio = py.import_bound("asyncio")?;
+        let asyncio = py.import("asyncio")?;
 
         // convert asyncio.sleep into a Rust Future
         pyo3_async_runtimes::async_std::into_future(
@@ -507,7 +507,7 @@ fn main() -> PyResult<()> {
     pyo3::prepare_freethreaded_python();
 
     Python::with_gil(|py| {
-        let uvloop = py.import_bound("uvloop")?;
+        let uvloop = py.import("uvloop")?;
         uvloop.call_method0("install")?;
 
         // store a reference for the assertion
@@ -604,7 +604,7 @@ To make things a bit easier, I decided to keep most of the old API alongside the
        pyo3::prepare_freethreaded_python();
 
        Python::with_gil(|py| {
-           let asyncio = py.import_bound("asyncio")?;
+           let asyncio = py.import("asyncio")?;
 
            let event_loop = asyncio.call_method0("new_event_loop")?;
            asyncio.call_method1("set_event_loop", (&event_loop,))?;
