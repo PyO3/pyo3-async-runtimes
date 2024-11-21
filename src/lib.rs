@@ -100,7 +100,7 @@
 //!             // event loop from earlier.
 //!             pyo3_async_runtimes::into_future_with_locals(
 //!                 &locals,
-//!                 py.import_bound("asyncio")?.call_method1("sleep", (1,))?
+//!                 py.import("asyncio")?.call_method1("sleep", (1,))?
 //!             )
 //!         })?;
 //!
@@ -169,7 +169,7 @@
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     // Now we can get the current locals through task-local data
 //!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
-//!                     py.import_bound("asyncio")?.call_method1("sleep", (1,))?
+//!                     py.import("asyncio")?.call_method1("sleep", (1,))?
 //!                 )
 //!             })?;
 //!
@@ -244,7 +244,7 @@
 //!     pyo3_async_runtimes::tokio::future_into_py(py, async move {
 //!         let py_sleep = Python::with_gil(|py| {
 //!             pyo3_async_runtimes::tokio::into_future(
-//!                 py.import_bound("asyncio")?.call_method1("sleep", (1,))?
+//!                 py.import("asyncio")?.call_method1("sleep", (1,))?
 //!             )
 //!         })?;
 //!
@@ -300,7 +300,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["attributes"]
 //! ```
 //!
@@ -313,7 +313,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["async-std-runtime"]
 //! ```
 //!
@@ -326,7 +326,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["tokio-runtime"]
 //! ```
 //!
@@ -339,7 +339,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["testing"]
 //! ```
 
@@ -364,7 +364,7 @@ pub mod generic;
 
 #[pymodule]
 fn pyo3_async_runtimes(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    m.add("RustPanic", py.get_type_bound::<err::RustPanic>())?;
+    m.add("RustPanic", py.get_type::<err::RustPanic>())?;
     Ok(())
 }
 
@@ -442,7 +442,7 @@ fn close(event_loop: Bound<PyAny>) -> PyResult<()> {
 
 fn asyncio(py: Python) -> PyResult<&Bound<PyAny>> {
     ASYNCIO
-        .get_or_try_init(|| Ok(py.import_bound("asyncio")?.into()))
+        .get_or_try_init(|| Ok(py.import("asyncio")?.into()))
         .map(|asyncio| asyncio.bind(py))
 }
 
@@ -464,7 +464,7 @@ pub fn get_running_loop(py: Python) -> PyResult<Bound<PyAny>> {
 
 fn contextvars(py: Python) -> PyResult<&Bound<PyAny>> {
     Ok(CONTEXTVARS
-        .get_or_try_init(|| py.import_bound("contextvars").map(|m| m.into()))?
+        .get_or_try_init(|| py.import("contextvars").map(|m| m.into()))?
         .bind(py))
 }
 
@@ -576,14 +576,14 @@ impl PyEnsureFuture {
     }
 }
 
-fn call_soon_threadsafe(
-    event_loop: &Bound<PyAny>,
+fn call_soon_threadsafe<'py>(
+    event_loop: &Bound<'py, PyAny>,
     context: &Bound<PyAny>,
-    args: impl IntoPy<Py<PyTuple>>,
+    args: impl IntoPyObject<'py, Target = PyTuple>,
 ) -> PyResult<()> {
     let py = event_loop.py();
 
-    let kwargs = PyDict::new_bound(py);
+    let kwargs = PyDict::new(py);
     kwargs.set_item("context", context)?;
 
     event_loop.call_method("call_soon_threadsafe", args, Some(&kwargs))?;
@@ -605,6 +605,7 @@ fn call_soon_threadsafe(
 ///
 /// ```
 /// use std::time::Duration;
+/// use std::ffi::CString;
 ///
 /// use pyo3::prelude::*;
 ///
@@ -619,11 +620,11 @@ fn call_soon_threadsafe(
 /// async fn py_sleep(seconds: f32) -> PyResult<()> {
 ///     let test_mod = Python::with_gil(|py| -> PyResult<PyObject> {
 ///         Ok(
-///             PyModule::from_code_bound(
+///             PyModule::from_code(
 ///                 py,
-///                 PYTHON_CODE,
-///                 "test_into_future/test_mod.py",
-///                 "test_mod"
+///                 &CString::new(PYTHON_CODE).unwrap(),
+///                 &CString::new("test_into_future/test_mod.py").unwrap(),
+///                 &CString::new("test_mod").unwrap(),
 ///             )?
 ///             .into()
 ///         )
@@ -633,7 +634,7 @@ fn call_soon_threadsafe(
 ///         pyo3_async_runtimes::into_future_with_locals(
 ///             &pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
+///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
 ///                 .into_bound(py),
 ///         )
 ///     })?
@@ -661,7 +662,7 @@ pub fn into_future_with_locals(
         match rx.await {
             Ok(item) => item,
             Err(_) => Python::with_gil(|py| {
-                Err(PyErr::from_value_bound(
+                Err(PyErr::from_value(
                     asyncio(py)?.call_method0("CancelledError")?,
                 ))
             }),

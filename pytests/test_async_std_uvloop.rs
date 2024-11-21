@@ -4,7 +4,7 @@ fn main() -> pyo3::PyResult<()> {
     pyo3::prepare_freethreaded_python();
 
     Python::with_gil(|py| {
-        let uvloop = py.import_bound("uvloop")?;
+        let uvloop = py.import("uvloop")?;
         uvloop.call_method0("install")?;
 
         // store a reference for the assertion

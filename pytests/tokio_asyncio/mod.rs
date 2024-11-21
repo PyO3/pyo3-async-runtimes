@@ -1,3 +1,4 @@
+use std::ffi::CString;
 use std::{
     rc::Rc,
     sync::{Arc, Mutex},
@@ -29,15 +30,15 @@ fn sleep<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny
 #[pyo3_async_runtimes::tokio::test]
 async fn test_future_into_py() -> PyResult<()> {
     let fut = Python::with_gil(|py| {
-        let sleeper_mod = PyModule::new_bound(py, "rust_sleeper")?;
+        let sleeper_mod = PyModule::new(py, "rust_sleeper")?;
 
         sleeper_mod.add_wrapped(wrap_pyfunction!(sleep))?;
 
-        let test_mod = PyModule::from_code_bound(
+        let test_mod = PyModule::from_code(
             py,
-            common::TEST_MOD,
-            "test_future_into_py_mod.py",
-            "test_future_into_py_mod",
+            &CString::new(common::TEST_MOD).unwrap(),
+            &CString::new("test_future_into_py_mod.py").unwrap(),
+            &CString::new("test_future_into_py_mod").unwrap(),
         )?;
 
         pyo3_async_runtimes::tokio::into_future(
@@ -52,10 +53,7 @@ async fn test_future_into_py() -> PyResult<()> {
 
 #[pyo3_async_runtimes::tokio::test]
 async fn test_async_sleep() -> PyResult<()> {
-    let asyncio = Python::with_gil(|py| {
-        py.import_bound("asyncio")
-            .map(|asyncio| PyObject::from(asyncio))
-    })?;
+    let asyncio = Python::with_gil(|py| py.import("asyncio").map(PyObject::from))?;
 
     tokio::time::sleep(Duration::from_secs(1)).await;
 
@@ -163,8 +161,8 @@ async fn test_cancel() -> PyResult<()> {
     .await
     {
         Python::with_gil(|py| -> PyResult<()> {
-            assert!(e.value_bound(py).is_instance(
-                py.import_bound("asyncio")?
+            assert!(e.value(py).is_instance(
+                py.import("asyncio")?
                     .getattr("CancelledError")?
                     .downcast::<PyType>()
                     .unwrap()
@@ -187,7 +185,7 @@ async fn test_cancel() -> PyResult<()> {
 #[allow(deprecated)]
 fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
     let locals = Python::with_gil(|py| -> PyResult<TaskLocals> {
-        Ok(TaskLocals::new(event_loop.into_bound(py)).copy_context(py)?)
+        TaskLocals::new(event_loop.into_bound(py)).copy_context(py)
     })?;
 
     tokio::task::LocalSet::new().block_on(
@@ -215,8 +213,8 @@ fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
             .await
             {
                 Python::with_gil(|py| -> PyResult<()> {
-                    assert!(e.value_bound(py).is_instance(
-                        py.import_bound("asyncio")?
+                    assert!(e.value(py).is_instance(
+                        py.import("asyncio")?
                             .getattr("CancelledError")?
                             .downcast::<PyType>()
                             .unwrap()
@@ -275,13 +273,13 @@ fn test_multiple_asyncio_run() -> PyResult<()> {
         })?;
 
         let d = [
-            ("asyncio", py.import_bound("asyncio")?.into()),
+            ("asyncio", py.import("asyncio")?.into()),
             ("test_mod", wrap_pymodule!(test_mod)(py)),
         ]
-        .into_py_dict_bound(py);
+        .into_py_dict(py)?;
 
-        py.run_bound(TEST_CODE, Some(&d), None)?;
-        py.run_bound(TEST_CODE, Some(&d), None)?;
+        py.run(&CString::new(TEST_CODE).unwrap(), Some(&d), None)?;
+        py.run(&CString::new(TEST_CODE).unwrap(), Some(&d), None)?;
         Ok(())
     })
 }
@@ -320,18 +318,18 @@ async def gen():
 #[pyo3_async_runtimes::tokio::test]
 async fn test_async_gen_v1() -> PyResult<()> {
     let stream = Python::with_gil(|py| {
-        let test_mod = PyModule::from_code_bound(
+        let test_mod = PyModule::from_code(
             py,
-            TOKIO_TEST_MOD,
-            "test_rust_coroutine/tokio_test_mod.py",
-            "tokio_test_mod",
+            &CString::new(TOKIO_TEST_MOD).unwrap(),
+            &CString::new("test_rust_coroutine/tokio_test_mod.py").unwrap(),
+            &CString::new("tokio_test_mod").unwrap(),
         )?;
 
         pyo3_async_runtimes::tokio::into_stream_v1(test_mod.call_method0("gen")?)
     })?;
 
     let vals = stream
-        .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
+        .map(|item| Python::with_gil(|py| -> PyResult<i32> { item?.bind(py).extract() }))
         .try_collect::<Vec<i32>>()
         .await?;
 
@@ -344,18 +342,18 @@ async fn test_async_gen_v1() -> PyResult<()> {
 #[pyo3_async_runtimes::tokio::test]
 async fn test_async_gen_v2() -> PyResult<()> {
     let stream = Python::with_gil(|py| {
-        let test_mod = PyModule::from_code_bound(
+        let test_mod = PyModule::from_code(
             py,
-            TOKIO_TEST_MOD,
-            "test_rust_coroutine/tokio_test_mod.py",
-            "tokio_test_mod",
+            &CString::new(TOKIO_TEST_MOD).unwrap(),
+            &CString::new("test_rust_coroutine/tokio_test_mod.py").unwrap(),
+            &CString::new("tokio_test_mod").unwrap(),
         )?;
 
         pyo3_async_runtimes::tokio::into_stream_v2(test_mod.call_method0("gen")?)
     })?;
 
     let vals = stream
-        .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
+        .map(|item| Python::with_gil(|py| -> PyResult<i32> { item.bind(py).extract() }))
         .try_collect::<Vec<i32>>()
         .await?;
 
@@ -381,14 +379,14 @@ asyncio.run(main())
 fn test_contextvars() -> PyResult<()> {
     Python::with_gil(|py| {
         let d = [
-            ("asyncio", py.import_bound("asyncio")?.into()),
-            ("contextvars", py.import_bound("contextvars")?.into()),
+            ("asyncio", py.import("asyncio")?.into()),
+            ("contextvars", py.import("contextvars")?.into()),
             ("cvars_mod", wrap_pymodule!(cvars_mod)(py)),
         ]
-        .into_py_dict_bound(py);
+        .into_py_dict(py)?;
 
-        py.run_bound(CONTEXTVARS_CODE, Some(&d), None)?;
-        py.run_bound(CONTEXTVARS_CODE, Some(&d), None)?;
+        py.run(&CString::new(CONTEXTVARS_CODE).unwrap(), Some(&d), None)?;
+        py.run(&CString::new(CONTEXTVARS_CODE).unwrap(), Some(&d), None)?;
         Ok(())
     })
 }

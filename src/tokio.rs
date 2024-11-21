@@ -9,7 +9,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.22"
+//! version = "0.23"
 //! features = ["unstable-streams"]
 //! ```
 
@@ -222,7 +222,7 @@ fn multi_thread() -> Builder {
 /// #
 /// # pyo3::prepare_freethreaded_python();
 /// # Python::with_gil(|py| -> PyResult<()> {
-/// # let event_loop = py.import_bound("asyncio")?.call_method0("new_event_loop")?;
+/// # let event_loop = py.import("asyncio")?.call_method0("new_event_loop")?;
 /// pyo3_async_runtimes::tokio::run_until_complete(event_loop, async move {
 ///     tokio::time::sleep(Duration::from_secs(1)).await;
 ///     Ok(())
@@ -322,7 +322,7 @@ pub fn future_into_py_with_locals<F, T>(
 ) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: IntoPy<PyObject>,
+    T: for<'py> IntoPyObject<'py>,
 {
     generic::future_into_py_with_locals::<TokioRuntime, F, T>(py, locals, fut)
 }
@@ -368,7 +368,7 @@ where
 pub fn future_into_py<F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: IntoPy<PyObject>,
+    T: for<'py> IntoPyObject<'py>,
 {
     generic::future_into_py::<TokioRuntime, _, T>(py, fut)
 }
@@ -459,7 +459,7 @@ pub fn local_future_into_py_with_locals<F, T>(
 ) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + 'static,
-    T: IntoPy<PyObject>,
+    T: for<'py> IntoPyObject<'py>,
 {
     generic::local_future_into_py_with_locals::<TokioRuntime, _, T>(py, locals, fut)
 }
@@ -540,7 +540,7 @@ where
 pub fn local_future_into_py<F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + 'static,
-    T: IntoPy<PyObject>,
+    T: for<'py> IntoPyObject<'py>,
 {
     generic::local_future_into_py::<TokioRuntime, _, T>(py, fut)
 }
@@ -559,6 +559,7 @@ where
 ///
 /// ```
 /// use std::time::Duration;
+/// use std::ffi::CString;
 ///
 /// use pyo3::prelude::*;
 ///
@@ -572,11 +573,11 @@ where
 /// async fn py_sleep(seconds: f32) -> PyResult<()> {
 ///     let test_mod = Python::with_gil(|py| -> PyResult<PyObject> {
 ///         Ok(
-///             PyModule::from_code_bound(
+///             PyModule::from_code(
 ///                 py,
-///                 PYTHON_CODE,
-///                 "test_into_future/test_mod.py",
-///                 "test_mod"
+///                 &CString::new(PYTHON_CODE).unwrap(),
+///                 &CString::new("test_into_future/test_mod.py").unwrap(),
+///                 &CString::new("test_mod").unwrap(),
 ///             )?
 ///             .into()
 ///         )
@@ -585,7 +586,7 @@ where
 ///     Python::with_gil(|py| {
 ///         pyo3_async_runtimes::tokio::into_future(
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_py(py),))?
+///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
 ///                 .into_bound(py),
 ///         )
 ///     })?
@@ -613,6 +614,7 @@ pub fn into_future(
 /// ```
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio
@@ -627,11 +629,11 @@ pub fn into_future(
 /// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
-///     let test_mod = PyModule::from_code_bound(
+///     let test_mod = PyModule::from_code(
 ///         py,
-///         TEST_MOD,
-///         "test_rust_coroutine/test_mod.py",
-///         "test_mod",
+///         &CString::new(TEST_MOD).unwrap(),
+///         &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+///         &CString::new("test_mod").unwrap(),
 ///     )?;
 ///
 ///     pyo3_async_runtimes::tokio::into_stream_with_locals_v1(
@@ -673,6 +675,7 @@ pub fn into_stream_with_locals_v1(
 /// ```
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio
@@ -687,11 +690,11 @@ pub fn into_stream_with_locals_v1(
 /// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
-///     let test_mod = PyModule::from_code_bound(
+///     let test_mod = PyModule::from_code(
 ///         py,
-///         TEST_MOD,
-///         "test_rust_coroutine/test_mod.py",
-///         "test_mod",
+///         &CString::new(TEST_MOD).unwrap(),
+///         &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+///         &CString::new("test_mod").unwrap(),
 ///     )?;
 ///
 ///     pyo3_async_runtimes::tokio::into_stream_v1(test_mod.call_method0("gen")?)
@@ -730,6 +733,7 @@ pub fn into_stream_v1(
 /// ```
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio
@@ -744,11 +748,11 @@ pub fn into_stream_v1(
 /// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
-///     let test_mod = PyModule::from_code_bound(
+///     let test_mod = PyModule::from_code(
 ///         py,
-///         TEST_MOD,
-///         "test_rust_coroutine/test_mod.py",
-///         "test_mod",
+///         &CString::new(TEST_MOD).unwrap(),
+///         &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+///         &CString::new("test_mod").unwrap(),
 ///     )?;
 ///
 ///     pyo3_async_runtimes::tokio::into_stream_with_locals_v2(
@@ -790,6 +794,7 @@ pub fn into_stream_with_locals_v2(
 /// ```
 /// use pyo3::prelude::*;
 /// use futures::{StreamExt, TryStreamExt};
+/// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
 /// import asyncio
@@ -804,11 +809,11 @@ pub fn into_stream_with_locals_v2(
 /// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
 /// let stream = Python::with_gil(|py| {
-///     let test_mod = PyModule::from_code_bound(
+///     let test_mod = PyModule::from_code(
 ///         py,
-///         TEST_MOD,
-///         "test_rust_coroutine/test_mod.py",
-///         "test_mod",
+///         &CString::new(TEST_MOD).unwrap(),
+///         &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+///         &CString::new("test_mod").unwrap(),
 ///     )?;
 ///
 ///     pyo3_async_runtimes::tokio::into_stream_v2(test_mod.call_method0("gen")?)

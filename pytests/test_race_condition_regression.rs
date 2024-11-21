@@ -1,3 +1,5 @@
+use std::ffi::CString;
+
 use pyo3::{prelude::*, wrap_pyfunction};
 
 #[pyfunction]
@@ -49,15 +51,15 @@ fn main() -> pyo3::PyResult<()> {
     pyo3::prepare_freethreaded_python();
 
     Python::with_gil(|py| -> PyResult<()> {
-        let sleeper_mod = PyModule::new_bound(py, "rust_sleeper")?;
+        let sleeper_mod = PyModule::new(py, "rust_sleeper")?;
 
         sleeper_mod.add_wrapped(wrap_pyfunction!(sleep))?;
 
-        let test_mod = PyModule::from_code_bound(
+        let test_mod = PyModule::from_code(
             py,
-            RACE_CONDITION_REGRESSION_TEST,
-            "race_condition_regression_test.py",
-            "race_condition_regression_test",
+            &CString::new(RACE_CONDITION_REGRESSION_TEST).unwrap(),
+            &CString::new("race_condition_regression_test.py").unwrap(),
+            &CString::new("race_condition_regression_test").unwrap(),
         )?;
 
         test_mod.call_method1("main", (sleeper_mod.getattr("sleep")?,))?;

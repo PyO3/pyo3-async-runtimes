@@ -1,9 +1,10 @@
+use std::ffi::CString;
 use std::{thread, time::Duration};
 
 use pyo3::prelude::*;
 use pyo3_async_runtimes::TaskLocals;
 
-pub(super) const TEST_MOD: &'static str = r#"
+pub(super) const TEST_MOD: &str = r#"
 import asyncio
 
 async def py_sleep(duration):
@@ -15,12 +16,16 @@ async def sleep_for_1s(sleep_for):
 
 pub(super) async fn test_into_future(event_loop: PyObject) -> PyResult<()> {
     let fut = Python::with_gil(|py| {
-        let test_mod =
-            PyModule::from_code_bound(py, TEST_MOD, "test_rust_coroutine/test_mod.py", "test_mod")?;
+        let test_mod = PyModule::from_code(
+            py,
+            &CString::new(TEST_MOD).unwrap(),
+            &CString::new("test_rust_coroutine/test_mod.py").unwrap(),
+            &CString::new("test_mod").unwrap(),
+        )?;
 
         pyo3_async_runtimes::into_future_with_locals(
             &TaskLocals::new(event_loop.into_bound(py)),
-            test_mod.call_method1("py_sleep", (1.into_py(py),))?,
+            test_mod.call_method1("py_sleep", (1.into_pyobject(py).unwrap(),))?,
         )
     })?;
 
@@ -36,8 +41,8 @@ pub(super) fn test_blocking_sleep() -> PyResult<()> {
 
 pub(super) async fn test_other_awaitables(event_loop: PyObject) -> PyResult<()> {
     let fut = Python::with_gil(|py| {
-        let functools = py.import_bound("functools")?;
-        let time = py.import_bound("time")?;
+        let functools = py.import("functools")?;
+        let time = py.import("time")?;
 
         // spawn a blocking sleep in the threadpool executor - returns a task, not a coroutine
         let task = event_loop.bind(py).call_method1(
