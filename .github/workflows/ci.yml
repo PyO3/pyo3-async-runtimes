@@ -149,22 +149,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly
-          override: true
+      - uses: taiki-e/install-action@cargo-llvm-cov
+
       - name: Install pyo3-asyncio test dependencies
-        run: |
-          python -m pip install -U uvloop
-      - uses: actions-rs/cargo@v1
+        run: python -m pip install -U uvloop
+
+      - run: cargo llvm-cov --all-features --codecov --output-path coverage.json
+      - uses: codecov/codecov-action@v5
         with:
-          command: test
-          args: --all-features
-        env:
-          CARGO_INCREMENTAL: 0
-          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cllvm-args=--inline-threshold=0 -Clink-dead-code -Coverflow-checks=off"
-          RUSTDOCFLAGS: "-Zprofile -Ccodegen-units=1 -Cllvm-args=--inline-threshold=0 -Clink-dead-code -Coverflow-checks=off"
-      - uses: actions-rs/grcov@v0.1
-        id: coverage
-      - uses: codecov/codecov-action@v4
-        with:
-          file: ${{ steps.coverage.outputs.report }}
+          files: coverage.json
