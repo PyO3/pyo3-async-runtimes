@@ -5,7 +5,7 @@
 [![crates.io](https://img.shields.io/crates/v/pyo3-async-runtimes)](https://crates.io/crates/pyo3-async-runtimes)
 [![minimum rustc 1.63](https://img.shields.io/badge/rustc-1.63+-blue.svg)](https://rust-lang.github.io/rfcs/2495-min-rust-version.html)
 
-***This is a fork of [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21. This may be the base for a permanent fork in the future, depending on the status of the original `pyo3-asyncio` maintainer.***
+***This is a fork of [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21+. This may be the base for a permanent fork in the future, depending on the status of the original `pyo3-asyncio` maintainer.***
 
 [Rust](http://www.rust-lang.org/) bindings for [Python](https://www.python.org/)'s [Asyncio Library](https://docs.python.org/3/library/asyncio.html). This crate facilitates interactions between Rust Futures and Python Coroutines and manages the lifecycle of their corresponding event loops.
 
@@ -19,26 +19,24 @@
 
 > PyO3 Asyncio is a _brand new_ part of the broader PyO3 ecosystem. Feel free to open any issues for feature requests or bugfixes for this crate.
 
-**If you're a new-comer, the best way to get started is to read through the primer below! For `v0.13` and `v0.14` users I highly recommend reading through the [migration section](#migration-guide) to get a general idea of what's changed in `v0.14` and `v0.15`.**
-
 ## Usage
 
 Like PyO3, PyO3 Asyncio supports the following software versions:
 
 - Python 3.7 and up (CPython and PyPy)
-- Rust 1.48 and up
+- Rust 1.63 and up
 
-## PyO3 Asyncio Primer
+## PyO3-async-runtimes Primer
 
 If you are working with a Python library that makes use of async functions or wish to provide
 Python bindings for an async Rust library, [`pyo3-async-runtimes`](https://github.com/PyO3/pyo3-async-runtimes)
 likely has the tools you need. It provides conversions between async functions in both Python and
 Rust and was designed with first-class support for popular Rust runtimes such as
 [`tokio`](https://tokio.rs/) and [`async-std`](https://async.rs/). In addition, all async Python
-code runs on the default `asyncio` event loop, so `pyo3-asyncio` should work just fine with existing
+code runs on the default `asyncio` event loop, so `pyo3-async-runtimes` should work just fine with existing
 Python libraries.
 
-In the following sections, we'll give a general overview of `pyo3-asyncio` explaining how to call
+In the following sections, we'll give a general overview of `pyo3-async-runtimes` explaining how to call
 async Python functions with PyO3, how to call async Rust functions from Python, and how to configure
 your codebase to manage the runtimes of both.
 
@@ -124,7 +122,7 @@ crate-type = ["cdylib"]
 ```
 
 Make your project depend on `pyo3` with the `extension-module` feature enabled and select your
-`pyo3-asyncio` runtime:
+`pyo3-async-runtimes` runtime:
 
 For `async-std`:
 
@@ -282,7 +280,7 @@ let future = rust_sleep();
 
 We can convert this `Future` object into Python to make it `awaitable`. This tells Python that you
 can use the `await` keyword with it. In order to do this, we'll call
-[`pyo3_async_runtimes::async_std::future_into_py`](https://docs.rs/pyo3-asyncio/latest/pyo3_async_runtimes/async_std/fn.future_into_py.html):
+[`pyo3_async_runtimes::async_std::future_into_py`](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/async_std/fn.future_into_py.html):
 
 ```rust
 use pyo3::prelude::*;
@@ -316,7 +314,7 @@ Python's `asyncio` features, like proper signal handling, require control over t
 doesn't always play well with Rust.
 
 Luckily, Rust's event loops are pretty flexible and don't _need_ control over the main thread, so in
-`pyo3-asyncio`, we decided the best way to handle Rust/Python interop was to just surrender the main
+`pyo3-async-runtimes`, we decided the best way to handle Rust/Python interop was to just surrender the main
 thread to Python and run Rust's event loops in the background. Unfortunately, since most event loop
 implementations _prefer_ control over the main thread, this can still make some things awkward.
 
@@ -324,7 +322,7 @@ implementations _prefer_ control over the main thread, this can still make some 
 
 Because Python needs to control the main thread, we can't use the convenient proc macros from Rust
 runtimes to handle the `main` function or `#[test]` functions. Instead, the initialization for PyO3 has to be done from the `main` function and the main
-thread must block on [`pyo3_async_runtimes::run_forever`](https://docs.rs/pyo3-asyncio/latest/pyo3_async_runtimes/fn.run_forever.html) or [`pyo3_async_runtimes::async_std::run_until_complete`](https://docs.rs/pyo3-asyncio/latest/pyo3_async_runtimes/async_std/fn.run_until_complete.html).
+thread must block on [`pyo3_async_runtimes::async_std::run_until_complete`](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/async_std/fn.run_until_complete.html).
 
 Because we have to block on one of those functions, we can't use [`#[async_std::main]`](https://docs.rs/async-std/latest/async_std/attr.main.html) or [`#[tokio::main]`](https://docs.rs/tokio/1.1.0/tokio/attr.main.html)
 since it's not a good idea to make long blocking calls during an async function.
@@ -345,7 +343,7 @@ since it's not a good idea to make long blocking calls during an async function.
 > that can avoid this problem, but again that's not something we can use here since we need it to
 > block on the _main_ thread.
 
-For this reason, `pyo3-asyncio` provides its own set of proc macros to provide you with this
+For this reason, `pyo3-async-runtimes` provides its own set of proc macros to provide you with this
 initialization. These macros are intended to mirror the initialization of `async-std` and `tokio`
 while also satisfying the Python runtime's needs.
 
@@ -535,8 +533,8 @@ fn main() -> PyResult<()> {
 
 ### Additional Information
 
-- Managing event loop references can be tricky with pyo3-async-runtimes. See [Event Loop References and ContextVars](https://awestlake87.github.io/pyo3-asyncio/master/doc/pyo3_async_runtimes/#event-loop-references-and-contextvars) in the API docs to get a better intuition for how event loop references are managed in this library.
-- Testing pyo3-asyncio libraries and applications requires a custom test harness since Python requires control over the main thread. You can find a testing guide in the [API docs for the `testing` module](https://awestlake87.github.io/pyo3-asyncio/master/doc/pyo3_async_runtimes/testing)
+- Managing event loop references can be tricky with pyo3-async-runtimes. See [Event Loop References and ContextVars](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/#event-loop-references-and-contextvars) in the API docs to get a better intuition for how event loop references are managed in this library.
+- Testing pyo3-async-runtimes libraries and applications requires a custom test harness since Python requires control over the main thread. You can find a testing guide in the [API docs for the `testing` module](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/testing/index.html)
 
 ## Migration Guide
 
@@ -548,7 +546,7 @@ Well, a lot actually. There were some pretty major flaws in the initialization b
 
 To make things a bit easier, I decided to keep most of the old API alongside the new one (with some deprecation warnings to encourage users to move away from it). It should be possible to use the `v0.13` API alongside the newer `v0.14` API, which should allow you to upgrade your application piecemeal rather than all at once.
 
-**Before you get started, I personally recommend taking a look at [Event Loop References and ContextVars](https://awestlake87.github.io/pyo3-asyncio/master/doc/pyo3_async_runtimes/#event-loop-references-and-contextvars) in order to get a better grasp on the motivation behind these changes and the nuance involved in using the new conversions.**
+**Before you get started, I personally recommend taking a look at [Event Loop References and ContextVars](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/#event-loop-references-and-contextvars) in order to get a better grasp on the motivation behind these changes and the nuance involved in using the new conversions.**
 
 ### 0.14 Highlights
 
@@ -636,7 +634,7 @@ To make things a bit easier, I decided to keep most of the old API alongside the
    ```
 
 4. Replace conversions with their newer counterparts.
-   > You may encounter some issues regarding the usage of `get_running_loop` vs `get_event_loop`. For more details on these newer conversions and how they should be used see [Event Loop References and ContextVars](https://awestlake87.github.io/pyo3-asyncio/master/doc/pyo3_async_runtimes/#event-loop-references-and-contextvars).
+   > You may encounter some issues regarding the usage of `get_running_loop` vs `get_event_loop`. For more details on these newer conversions and how they should be used see [Event Loop References and ContextVars](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/#event-loop-references-and-contextvars).
    - Replace `pyo3_async_runtimes::into_future` with `pyo3_async_runtimes::<runtime>::into_future`
    - Replace `pyo3_async_runtimes::<runtime>::into_coroutine` with `pyo3_async_runtimes::<runtime>::future_into_py`
    - Replace `pyo3_async_runtimes::get_event_loop` with `pyo3_async_runtimes::<runtime>::get_current_loop`
