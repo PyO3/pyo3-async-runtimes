@@ -10,7 +10,7 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 <!-- towncrier release notes start -->
 
-## [Unreleased]
+## [0.23.0] - 2024-11-22
 
 - Bump minimum version of `pyo3` dependency to 0.23. [#21](https://github.com/PyO3/pyo3-async-runtimes/pull/21)
 
