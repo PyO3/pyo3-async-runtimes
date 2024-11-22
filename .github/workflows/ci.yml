@@ -95,7 +95,8 @@ jobs:
             extra_features: "nightly"
 
           # Test 32-bit windows just on latest Python
-          - python-version: "3.13"
+          - rust: stable
+            python-version: "3.13"
             platform: { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc" }
 
     steps:
