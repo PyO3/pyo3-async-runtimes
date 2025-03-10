@@ -54,8 +54,8 @@ Here we initialize the runtime, import Python's `asyncio` library and run the gi
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.23" }
-pyo3-async-runtimes = { version = "0.23", features = ["attributes", "async-std-runtime"] }
+pyo3 = { version = "0.24" }
+pyo3-async-runtimes = { version = "0.24", features = ["attributes", "async-std-runtime"] }
 async-std = "1.13"
 ```
 
@@ -84,8 +84,8 @@ attribute.
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.23" }
-pyo3-async-runtimes = { version = "0.23", features = ["attributes", "tokio-runtime"] }
+pyo3 = { version = "0.24" }
+pyo3-async-runtimes = { version = "0.24", features = ["attributes", "tokio-runtime"] }
 tokio = "1.40"
 ```
 
@@ -130,8 +130,8 @@ For `async-std`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.23", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.23", features = ["async-std-runtime"] }
+pyo3 = { version = "0.24", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.24", features = ["async-std-runtime"] }
 async-std = "1.13"
 ```
 
@@ -139,8 +139,8 @@ For `tokio`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.20", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.23", features = ["tokio-runtime"] }
+pyo3 = { version = "0.24", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.24", features = ["tokio-runtime"] }
 tokio = "1.40"
 ```
 
@@ -434,8 +434,8 @@ name = "my_async_module"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.23", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.23", features = ["tokio-runtime"] }
+pyo3 = { version = "0.24", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.24", features = ["tokio-runtime"] }
 async-std = "1.13"
 tokio = "1.40"
 ```
@@ -494,8 +494,8 @@ event loop before we can install the `uvloop` policy.
 ```toml
 [dependencies]
 async-std = "1.13"
-pyo3 = "0.23"
-pyo3-async-runtimes = { version = "0.23", features = ["async-std-runtime"] }
+pyo3 = "0.24"
+pyo3-async-runtimes = { version = "0.24", features = ["async-std-runtime"] }
 ```
 
 ```rust no_run
