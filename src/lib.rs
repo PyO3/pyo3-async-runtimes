@@ -579,7 +579,7 @@ impl PyEnsureFuture {
 fn call_soon_threadsafe<'py>(
     event_loop: &Bound<'py, PyAny>,
     context: &Bound<PyAny>,
-    args: impl IntoPyObject<'py, Target = PyTuple>,
+    args: impl IntoPyObject<'py, Target = PyTuple> + pyo3::call::PyCallArgs<'py>,
 ) -> PyResult<()> {
     let py = event_loop.py();
 
