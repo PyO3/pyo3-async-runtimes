@@ -398,10 +398,7 @@ use std::future::Future;
 
 use futures::channel::oneshot;
 use once_cell::sync::OnceCell;
-use pyo3::{
-    prelude::*,
-    types::{PyDict, PyTuple},
-};
+use pyo3::{prelude::*, types::PyDict};
 
 static ASYNCIO: OnceCell<PyObject> = OnceCell::new();
 static CONTEXTVARS: OnceCell<PyObject> = OnceCell::new();
@@ -579,7 +576,7 @@ impl PyEnsureFuture {
 fn call_soon_threadsafe<'py>(
     event_loop: &Bound<'py, PyAny>,
     context: &Bound<PyAny>,
-    args: impl IntoPyObject<'py, Target = PyTuple> + pyo3::call::PyCallArgs<'py>,
+    args: impl pyo3::call::PyCallArgs<'py>,
 ) -> PyResult<()> {
     let py = event_loop.py();
 
