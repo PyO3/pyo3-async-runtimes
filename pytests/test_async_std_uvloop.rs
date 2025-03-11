@@ -4,6 +4,14 @@ fn main() -> pyo3::PyResult<()> {
     pyo3::prepare_freethreaded_python();
 
     Python::with_gil(|py| {
+        // uvloop not supported on the free-threaded build yet
+        // https://github.com/MagicStack/uvloop/issues/642
+        let sysconfig = py.import("sysconfig")?;
+        let is_freethreaded = sysconfig.call_method1("get_config_var", ("Py_GIL_DISABLED",))?;
+        if is_freethreaded.is_truthy()? {
+            return Ok(());
+        }
+
         let uvloop = py.import("uvloop")?;
         uvloop.call_method0("install")?;
 
