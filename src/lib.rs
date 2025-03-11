@@ -300,7 +300,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.23"
+//! version = "0.24"
 //! features = ["attributes"]
 //! ```
 //!
@@ -313,7 +313,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.23"
+//! version = "0.24"
 //! features = ["async-std-runtime"]
 //! ```
 //!
@@ -326,7 +326,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.23"
+//! version = "0.24"
 //! features = ["tokio-runtime"]
 //! ```
 //!
@@ -339,7 +339,7 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.23"
+//! version = "0.24"
 //! features = ["testing"]
 //! ```
 
@@ -398,10 +398,7 @@ use std::future::Future;
 
 use futures::channel::oneshot;
 use once_cell::sync::OnceCell;
-use pyo3::{
-    prelude::*,
-    types::{PyDict, PyTuple},
-};
+use pyo3::{call::PyCallArgs, prelude::*, types::PyDict};
 
 static ASYNCIO: OnceCell<PyObject> = OnceCell::new();
 static CONTEXTVARS: OnceCell<PyObject> = OnceCell::new();
@@ -579,7 +576,7 @@ impl PyEnsureFuture {
 fn call_soon_threadsafe<'py>(
     event_loop: &Bound<'py, PyAny>,
     context: &Bound<PyAny>,
-    args: impl IntoPyObject<'py, Target = PyTuple>,
+    args: impl PyCallArgs<'py>,
 ) -> PyResult<()> {
     let py = event_loop.py();
 
