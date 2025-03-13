@@ -1,0 +1,131 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="testing Utilities for writing PyO3 Asyncio tests"><title>pyo3_async_runtimes::testing - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="pyo3_async_runtimes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../pyo3_async_runtimes/index.html">pyo3_<wbr>async_<wbr>runtimes</a><span class="version">0.24.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module testing</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#pyo3-asyncio-testing-utilities" title="PyO3 Asyncio Testing Utilities">PyO3 Asyncio Testing Utilities</a><ul><li><a href="#main-test-file" title="Main Test File">Main Test File</a></li><li><a href="#cargo-configuration" title="Cargo Configuration">Cargo Configuration</a></li><li><a href="#lib-tests" title="Lib Tests">Lib Tests</a></li></ul></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate pyo3_<wbr>async_<wbr>runtimes</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">pyo3_async_runtimes</a></span><h1>Module <span>testing</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/pyo3_async_runtimes/testing.rs.html#1-346">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>testing</code></span> Utilities for writing PyO3 Asyncio tests</p>
+<h2 id="pyo3-asyncio-testing-utilities"><a class="doc-anchor" href="#pyo3-asyncio-testing-utilities">§</a>PyO3 Asyncio Testing Utilities</h2>
+<p>This module provides some utilities for parsing test arguments as well as running and filtering
+a sequence of tests.</p>
+<p>As mentioned <a href="../index.html#pythons-event-loop" title="mod pyo3_async_runtimes">here</a>, PyO3 Asyncio tests cannot use the default test
+harness since it doesn’t allow Python to gain control over the main thread. Instead, we have to
+provide our own test harness in order to create integration tests.</p>
+<p>Running <code>pyo3-async-runtimes</code> code in doc tests <em>is</em> supported however since each doc test has its own
+<code>main</code> function. When writing doc tests, you may use the
+<a href="../async_std/attr.main.html" title="attr pyo3_async_runtimes::async_std::main"><code>#[pyo3_async_runtimes::async_std::main]</code></a> or
+<a href="../tokio/attr.main.html" title="attr pyo3_async_runtimes::tokio::main"><code>#[pyo3_async_runtimes::tokio::main]</code></a> macros on the test’s main function to run
+your test.</p>
+<p>If you don’t want to write doc tests, you’re unfortunately stuck with integration tests since
+lib tests do not offer the same level of flexibility for the <code>main</code> fn. That being said,
+overriding the default test harness can be quite different from what you’re used to doing for
+integration tests, so these next sections will walk you through this process.</p>
+<h3 id="main-test-file"><a class="doc-anchor" href="#main-test-file">§</a>Main Test File</h3>
+<p>First, we need to create the test’s main file. Although these tests are considered integration
+tests, we cannot put them in the <code>tests</code> directory since that is a special directory owned by
+Cargo. Instead, we put our tests in a <code>pytests</code> directory.</p>
+<blockquote>
+<p>The name <code>pytests</code> is just a convention. You can name this folder anything you want in your own
+projects.</p>
+</blockquote>
+<p>We’ll also want to provide the test’s main function. Most of the functionality that the test harness needs is packed in the <a href="https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/testing/fn.main.html"><code>pyo3_async_runtimes::testing::main</code></a> function. This function will parse the test’s CLI arguments, collect and pass the functions marked with <a href="https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/async_std/attr.test.html"><code>#[pyo3_async_runtimes::async_std::test]</code></a> or <a href="https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/tokio/attr.test.html"><code>#[pyo3_async_runtimes::tokio::test]</code></a> and pass them into the test harness for running and filtering.</p>
+<p><code>pytests/test_example.rs</code> for the <code>tokio</code> runtime:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[pyo3_async_runtimes::tokio::main]
+</span><span class="kw">async fn </span>main() -&gt; pyo3::PyResult&lt;()&gt; {
+    pyo3_async_runtimes::testing::main().<span class="kw">await
+</span>}</code></pre></div>
+<p><code>pytests/test_example.rs</code> for the <code>async-std</code> runtime:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[pyo3_async_runtimes::async_std::main]
+</span><span class="kw">async fn </span>main() -&gt; pyo3::PyResult&lt;()&gt; {
+    pyo3_async_runtimes::testing::main().<span class="kw">await
+</span>}</code></pre></div>
+<h3 id="cargo-configuration"><a class="doc-anchor" href="#cargo-configuration">§</a>Cargo Configuration</h3>
+<p>Next, we need to add our test file to the Cargo manifest by adding the following section to the
+<code>Cargo.toml</code></p>
+<div class="example-wrap"><pre class="language-toml"><code>[[test]]
+name = &quot;test_example&quot;
+path = &quot;pytests/test_example.rs&quot;
+harness = false</code></pre></div>
+<p>Also add the <code>testing</code> and <code>attributes</code> features to the <code>pyo3-async-runtimes</code> dependency and select your preferred runtime:</p>
+<div class="example-wrap"><pre class="language-toml"><code>pyo3-async-runtimes = { version = &quot;0.24&quot;, features = [&quot;testing&quot;, &quot;attributes&quot;, &quot;async-std-runtime&quot;] }</code></pre></div>
+<p>At this point, you should be able to run the test via <code>cargo test</code></p>
+<h4 id="adding-tests-to-the-pyo3-asyncio-test-harness"><a class="doc-anchor" href="#adding-tests-to-the-pyo3-asyncio-test-harness">§</a>Adding Tests to the PyO3 Asyncio Test Harness</h4>
+<p>We can add tests anywhere in the test crate with the runtime’s corresponding <code>#[test]</code> attribute:</p>
+<p>For <code>async-std</code> use the <a href="https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/async_std/attr.test.html"><code>pyo3_async_runtimes::async_std::test</code></a> attribute:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">mod </span>tests {
+    <span class="kw">use </span>std::{time::Duration, thread};
+
+    <span class="kw">use </span>pyo3::prelude::<span class="kw-2">*</span>;
+
+    <span class="comment">// tests can be async
+    </span><span class="attr">#[pyo3_async_runtimes::async_std::test]
+    </span><span class="kw">async fn </span>test_async_sleep() -&gt; PyResult&lt;()&gt; {
+        async_std::task::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="comment">// they can also be synchronous
+    </span><span class="attr">#[pyo3_async_runtimes::async_std::test]
+    </span><span class="kw">fn </span>test_blocking_sleep() -&gt; PyResult&lt;()&gt; {
+        thread::sleep(Duration::from_secs(<span class="number">1</span>));
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="attr">#[pyo3_async_runtimes::async_std::main]
+</span><span class="kw">async fn </span>main() -&gt; pyo3::PyResult&lt;()&gt; {
+    pyo3_async_runtimes::testing::main().<span class="kw">await
+</span>}</code></pre></div>
+<p>For <code>tokio</code> use the <a href="https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/tokio/attr.test.html"><code>pyo3_async_runtimes::tokio::test</code></a> attribute:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">mod </span>tests {
+    <span class="kw">use </span>std::{time::Duration, thread};
+
+    <span class="kw">use </span>pyo3::prelude::<span class="kw-2">*</span>;
+
+    <span class="comment">// tests can be async
+    </span><span class="attr">#[pyo3_async_runtimes::tokio::test]
+    </span><span class="kw">async fn </span>test_async_sleep() -&gt; PyResult&lt;()&gt; {
+        tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="comment">// they can also be synchronous
+    </span><span class="attr">#[pyo3_async_runtimes::tokio::test]
+    </span><span class="kw">fn </span>test_blocking_sleep() -&gt; PyResult&lt;()&gt; {
+        thread::sleep(Duration::from_secs(<span class="number">1</span>));
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="attr">#[pyo3_async_runtimes::tokio::main]
+</span><span class="kw">async fn </span>main() -&gt; pyo3::PyResult&lt;()&gt; {
+    pyo3_async_runtimes::testing::main().<span class="kw">await
+</span>}</code></pre></div>
+<h3 id="lib-tests"><a class="doc-anchor" href="#lib-tests">§</a>Lib Tests</h3>
+<p>Unfortunately, as we mentioned at the beginning, these utilities will only run in integration
+tests and doc tests. Running lib tests are out of the question since we need control over the
+main function. You can however perform compilation checks for lib tests. This is much more
+useful in doc tests than it is for lib tests, but the option is there if you want it.</p>
+<p><code>my-crate/src/lib.rs</code></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">mod </span>tests {
+    <span class="kw">use </span>pyo3::prelude::<span class="kw-2">*</span>;
+
+    <span class="attr">#[pyo3_async_runtimes::async_std::test]
+    </span><span class="kw">async fn </span>test_async_std_async_test_compiles() -&gt; PyResult&lt;()&gt; {
+        <span class="prelude-val">Ok</span>(())
+    }
+    <span class="attr">#[pyo3_async_runtimes::async_std::test]
+    </span><span class="kw">fn </span>test_async_std_sync_test_compiles() -&gt; PyResult&lt;()&gt; {
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="attr">#[pyo3_async_runtimes::tokio::test]
+    </span><span class="kw">async fn </span>test_tokio_async_test_compiles() -&gt; PyResult&lt;()&gt; {
+        <span class="prelude-val">Ok</span>(())
+    }
+    <span class="attr">#[pyo3_async_runtimes::tokio::test]
+    </span><span class="kw">fn </span>test_tokio_sync_test_compiles() -&gt; PyResult&lt;()&gt; {
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Args.html" title="struct pyo3_async_runtimes::testing::Args">Args</a></div><div class="desc docblock-short">Args that should be provided to the test program</div></li><li><div class="item-name"><a class="struct" href="struct.Test.html" title="struct pyo3_async_runtimes::testing::Test">Test</a></div><div class="desc docblock-short">The structure used by the <code>#[test]</code> macros to provide a test to the <code>pyo3-async-runtimes</code> test harness.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.main.html" title="fn pyo3_async_runtimes::testing::main">main</a></div><div class="desc docblock-short">Parses test arguments and passes the tests to the <code>pyo3-async-runtimes</code> test harness</div></li><li><div class="item-name"><a class="fn" href="fn.parse_args.html" title="fn pyo3_async_runtimes::testing::parse_args">parse_<wbr>args</a></div><div class="desc docblock-short">Parse the test args from the command line</div></li><li><div class="item-name"><a class="fn" href="fn.test_harness.html" title="fn pyo3_async_runtimes::testing::test_harness">test_<wbr>harness</a></div><div class="desc docblock-short">Run a sequence of tests while applying any necessary filtering from the <code>Args</code></div></li></ul></section></div></main></body></html>

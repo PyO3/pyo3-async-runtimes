@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="unstable-streams Convert an async generator into a stream"><title>into_stream_with_locals_v2 in pyo3_async_runtimes::async_std - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="pyo3_async_runtimes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../pyo3_async_runtimes/index.html">pyo3_<wbr>async_<wbr>runtimes</a><span class="version">0.24.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">into_<wbr>stream_<wbr>with_<wbr>locals_<wbr>v2</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#arguments" title="Arguments">Arguments</a></li><li><a href="#examples" title="Examples">Examples</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In pyo3_<wbr>async_<wbr>runtimes::<wbr>async_<wbr>std</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">pyo3_async_runtimes</a>::<wbr><a href="index.html">async_std</a></span><h1>Function <span class="fn">into_stream_with_locals_v2</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/pyo3_async_runtimes/async_std.rs.html#703-708">Source</a> </span></div><pre class="rust item-decl"><code>pub fn into_stream_with_locals_v2(
+    locals: <a class="struct" href="../struct.TaskLocals.html" title="struct pyo3_async_runtimes::TaskLocals">TaskLocals</a>,
+    gen: Bound&lt;'_, PyAny&gt;,
+) -&gt; PyResult&lt;impl Stream&lt;Item = PyObject&gt; + 'static&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>unstable-streams</code></span> Convert an async generator into a stream</p>
+<p><strong>This API is marked as unstable</strong> and is only available when the
+<code>unstable-streams</code> crate feature is enabled. This comes with no
+stability guarantees, and could be changed or removed at any time.</p>
+<h2 id="arguments"><a class="doc-anchor" href="#arguments">§</a>Arguments</h2>
+<ul>
+<li><code>locals</code> - The current task locals</li>
+<li><code>gen</code> - The Python async generator to be converted</li>
+</ul>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>pyo3::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>futures::{StreamExt, TryStreamExt};
+<span class="kw">use </span>std::ffi::CString;
+
+<span class="kw">const </span>TEST_MOD: <span class="kw-2">&amp;</span>str = <span class="string">r#"
+import asyncio
+
+async def gen():
+    for i in range(10):
+        await asyncio.sleep(0.1)
+        yield i
+"#</span>;
+
+<span class="kw">let </span>stream = Python::with_gil(|py| {
+    <span class="kw">let </span>test_mod = PyModule::from_code(
+        py,
+        <span class="kw-2">&amp;</span>CString::new(TEST_MOD).unwrap(),
+        <span class="kw-2">&amp;</span>CString::new(<span class="string">"test_rust_coroutine/test_mod.py"</span>).unwrap(),
+        <span class="kw-2">&amp;</span>CString::new(<span class="string">"test_mod"</span>).unwrap(),
+    )<span class="question-mark">?</span>;
+
+    pyo3_async_runtimes::async_std::into_stream_with_locals_v2(
+        pyo3_async_runtimes::async_std::get_current_locals(py)<span class="question-mark">?</span>,
+        test_mod.call_method0(<span class="string">"gen"</span>)<span class="question-mark">?
+    </span>)
+})<span class="question-mark">?</span>;
+
+<span class="kw">let </span>vals = stream
+    .map(|item| Python::with_gil(|py| -&gt; PyResult&lt;i32&gt; { <span class="prelude-val">Ok</span>(item.bind(py).extract()<span class="question-mark">?</span>) }))
+    .try_collect::&lt;Vec&lt;i32&gt;&gt;()
+    .<span class="kw">await</span><span class="question-mark">?</span>;
+
+<span class="macro">assert_eq!</span>((<span class="number">0</span>..<span class="number">10</span>).collect::&lt;Vec&lt;i32&gt;&gt;(), vals);
+
+<span class="prelude-val">Ok</span>(())</code></pre></div>
+</div></details></section></div></main></body></html>
