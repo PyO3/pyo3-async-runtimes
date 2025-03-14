@@ -1,32 +1,30 @@
-# PyO3 Asyncio
+# Async Runtime Integrations for PyO3
 
 [![Actions Status](https://github.com/PyO3/pyo3-async-runtimes/workflows/CI/badge.svg)](https://github.com/PyO3/pyo3-async-runtimes)
 [![codecov](https://codecov.io/gh/davidhewitt/pyo3-async-runtimes/branch/main/graph/badge.svg)](https://codecov.io/gh/PyO3/pyo3-async-runtimes)
 [![crates.io](https://img.shields.io/crates/v/pyo3-async-runtimes)](https://crates.io/crates/pyo3-async-runtimes)
 [![minimum rustc 1.63](https://img.shields.io/badge/rustc-1.63+-blue.svg)](https://rust-lang.github.io/rfcs/2495-min-rust-version.html)
 
-***This is a fork of [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21+. This may be the base for a permanent fork in the future, depending on the status of the original `pyo3-asyncio` maintainer.***
+***Forked from [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21+.***
 
 [Rust](http://www.rust-lang.org/) bindings for [Python](https://www.python.org/)'s [Asyncio Library](https://docs.python.org/3/library/asyncio.html). This crate facilitates interactions between Rust Futures and Python Coroutines and manages the lifecycle of their corresponding event loops.
 
 - PyO3 Project: [Homepage](https://pyo3.rs/) | [GitHub](https://github.com/PyO3/pyo3)
 
-- PyO3 Async Runtimes API Documentation: [stable](https://docs.rs/pyo3-async-runtimes/)
+- `pyo3-async-runtimes` API Documentation: [stable](https://docs.rs/pyo3-async-runtimes/)
 
 - Guide for Async / Await [stable](https://pyo3.rs/latest/ecosystem/async-await.html) | [main](https://pyo3.rs/main/ecosystem/async-await.html)
 
 - Contributing Notes: [github](https://github.com/PyO3/pyo3-async-runtimes/blob/main/Contributing.md)
 
-> PyO3 Asyncio is a _brand new_ part of the broader PyO3 ecosystem. Feel free to open any issues for feature requests or bugfixes for this crate.
-
 ## Usage
 
-Like PyO3, PyO3 Asyncio supports the following software versions:
+`pyo3-async-runtimes` supports the following software versions:
 
-- Python 3.7 and up (CPython and PyPy)
+- Python 3.9 and up (CPython and PyPy)
 - Rust 1.63 and up
 
-## PyO3-async-runtimes Primer
+## `pyo3-async-runtimes` Primer
 
 If you are working with a Python library that makes use of async functions or wish to provide
 Python bindings for an async Rust library, [`pyo3-async-runtimes`](https://github.com/PyO3/pyo3-async-runtimes)
@@ -111,7 +109,7 @@ and the primer below.
 
 #### PyO3 Native Rust Modules
 
-PyO3 Asyncio can also be used to write native modules with async functions.
+`pyo3-async-runtimes` can also be used to write native modules with async functions.
 
 Add the `[lib]` section to `Cargo.toml` to make your library a `cdylib` that Python can import.
 
@@ -318,7 +316,7 @@ Luckily, Rust's event loops are pretty flexible and don't _need_ control over th
 thread to Python and run Rust's event loops in the background. Unfortunately, since most event loop
 implementations _prefer_ control over the main thread, this can still make some things awkward.
 
-### PyO3 Asyncio Initialization
+### `pyo3-async-runtimes` Initialization
 
 Because Python needs to control the main thread, we can't use the convenient proc macros from Rust
 runtimes to handle the `main` function or `#[test]` functions. Instead, the initialization for PyO3 has to be done from the `main` function and the main
@@ -376,7 +374,7 @@ async fn main() -> PyResult<()> {
 In Python 3.7+, the recommended way to run a top-level coroutine with `asyncio`
 is with `asyncio.run`. In `v0.13` we recommended against using this function due to initialization issues, but in `v0.14` it's perfectly valid to use this function... with a caveat.
 
-Since our Rust <--> Python conversions require a reference to the Python event loop, this poses a problem. Imagine we have a PyO3 Asyncio module that defines
+Since our Rust <--> Python conversions require a reference to the Python event loop, this poses a problem. Imagine we have a `pyo3-async-runtimes` module that defines
 a `rust_sleep` function like in previous examples. You might rightfully assume that you can call pass this directly into `asyncio.run` like this:
 
 ```python
@@ -397,7 +395,7 @@ RuntimeError: no running event loop
 ```
 
 What's happening here is that we are calling `rust_sleep` _before_ the future is
-actually running on the event loop created by `asyncio.run`. This is counter-intuitive, but expected behaviour, and unfortunately there doesn't seem to be a good way of solving this problem within PyO3 Asyncio itself.
+actually running on the event loop created by `asyncio.run`. This is counter-intuitive, but expected behaviour, and unfortunately there doesn't seem to be a good way of solving this problem within `pyo3-async-runtimes` itself.
 
 However, we can make this example work with a simple workaround:
 
@@ -533,172 +531,5 @@ fn main() -> PyResult<()> {
 
 ### Additional Information
 
-- Managing event loop references can be tricky with pyo3-async-runtimes. See [Event Loop References and ContextVars](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/#event-loop-references-and-contextvars) in the API docs to get a better intuition for how event loop references are managed in this library.
-- Testing pyo3-async-runtimes libraries and applications requires a custom test harness since Python requires control over the main thread. You can find a testing guide in the [API docs for the `testing` module](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/testing/index.html)
-
-## Migration Guide
-
-### Migrating from 0.13 to 0.14
-
-So what's changed from `v0.13` to `v0.14`?
-
-Well, a lot actually. There were some pretty major flaws in the initialization behaviour of `v0.13`. While it would have been nicer to address these issues without changing the public API, I decided it'd be better to break some of the old API rather than completely change the underlying behaviour of the existing functions. I realize this is going to be a bit of a headache, so hopefully this section will help you through it.
-
-To make things a bit easier, I decided to keep most of the old API alongside the new one (with some deprecation warnings to encourage users to move away from it). It should be possible to use the `v0.13` API alongside the newer `v0.14` API, which should allow you to upgrade your application piecemeal rather than all at once.
-
-**Before you get started, I personally recommend taking a look at [Event Loop References and ContextVars](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/#event-loop-references-and-contextvars) in order to get a better grasp on the motivation behind these changes and the nuance involved in using the new conversions.**
-
-### 0.14 Highlights
-
-- Tokio initialization is now lazy.
-  - No configuration necessary if you're using the multithreaded scheduler
-  - Calls to `pyo3_async_runtimes::tokio::init_multithread` or `pyo3_async_runtimes::tokio::init_multithread_once` can just be removed.
-  - Calls to `pyo3_async_runtimes::tokio::init_current_thread` or `pyo3_async_runtimes::tokio::init_current_thread_once` require some special attention.
-  - Custom runtime configuration is done by passing a `tokio::runtime::Builder` into `pyo3_async_runtimes::tokio::init` instead of a `tokio::runtime::Runtime`
-- A new, more correct set of functions has been added to replace the `v0.13` conversions.
-  - `pyo3_async_runtimes::into_future_with_loop`
-  - `pyo3_async_runtimes::<runtime>::future_into_py_with_loop`
-  - `pyo3_async_runtimes::<runtime>::local_future_into_py_with_loop`
-  - `pyo3_async_runtimes::<runtime>::into_future`
-  - `pyo3_async_runtimes::<runtime>::future_into_py`
-  - `pyo3_async_runtimes::<runtime>::local_future_into_py`
-  - `pyo3_async_runtimes::<runtime>::get_current_loop`
-- `pyo3_async_runtimes::try_init` is no longer required if you're only using `0.14` conversions
-- The `ThreadPoolExecutor` is no longer configured automatically at the start.
-  - Fortunately, this doesn't seem to have much effect on `v0.13` code, it just means that it's now possible to configure the executor manually as you see fit.
-
-### Upgrading Your Code to 0.14
-
-1. Fix PyO3 0.14 initialization.
-   - PyO3 0.14 feature gated its automatic initialization behaviour behind "auto-initialize". You can either enable the "auto-initialize" behaviour in your project or add a call to `pyo3::prepare_freethreaded_python()` to the start of your program.
-   - If you're using the `#[pyo3_async_runtimes::<runtime>::main]` proc macro attributes, then you can skip this step. `#[pyo3_async_runtimes::<runtime>::main]` will call `pyo3::prepare_freethreaded_python()` at the start regardless of your project's "auto-initialize" feature.
-2. Fix the tokio initialization.
-
-   - Calls to `pyo3_async_runtimes::tokio::init_multithread` or `pyo3_async_runtimes::tokio::init_multithread_once` can just be removed.
-   - If you're using the current thread scheduler, you'll need to manually spawn the thread that it runs on during initialization:
-
-     ```rust no_run
-     let mut builder = tokio::runtime::Builder::new_current_thread();
-     builder.enable_all();
-
-     pyo3_async_runtimes::tokio::init(builder);
-     std::thread::spawn(move || {
-         pyo3_async_runtimes::tokio::get_runtime().block_on(
-             futures::future::pending::<()>()
-         );
-     });
-     ```
-
-   - Custom `tokio::runtime::Builder` configs can be passed into `pyo3_async_runtimes::tokio::init`. The `tokio::runtime::Runtime` will be lazily instantiated on the first call to `pyo3_async_runtimes::tokio::get_runtime()`
-
-3. If you're using `pyo3_async_runtimes::run_forever` in your application, you should switch to a more manual approach.
-
-   > `run_forever` is not the recommended way of running an event loop in Python, so it might be a good idea to move away from it. This function would have needed to change for `0.14`, but since it's considered an edge case, it was decided that users could just manually call it if they need to.
-
-   ```rust
-   use pyo3::prelude::*;
-
-   fn main() -> PyResult<()> {
-       pyo3::prepare_freethreaded_python();
-
-       Python::with_gil(|py| {
-           let asyncio = py.import("asyncio")?;
-
-           let event_loop = asyncio.call_method0("new_event_loop")?;
-           asyncio.call_method1("set_event_loop", (&event_loop,))?;
-
-           let event_loop_hdl = PyObject::from(event_loop.clone());
-
-           pyo3_async_runtimes::tokio::get_runtime().spawn(async move {
-               tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-               // Stop the event loop manually
-               Python::with_gil(|py| {
-                   event_loop_hdl
-                       .bind(py)
-                       .call_method1(
-                           "call_soon_threadsafe",
-                           (event_loop_hdl
-                               .bind(py)
-                               .getattr("stop")
-                               .unwrap(),),
-                       )
-                       .unwrap();
-               })
-           });
-
-           event_loop.call_method0("run_forever")?;
-           Ok(())
-       })
-   }
-   ```
-
-4. Replace conversions with their newer counterparts.
-   > You may encounter some issues regarding the usage of `get_running_loop` vs `get_event_loop`. For more details on these newer conversions and how they should be used see [Event Loop References and ContextVars](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/#event-loop-references-and-contextvars).
-   - Replace `pyo3_async_runtimes::into_future` with `pyo3_async_runtimes::<runtime>::into_future`
-   - Replace `pyo3_async_runtimes::<runtime>::into_coroutine` with `pyo3_async_runtimes::<runtime>::future_into_py`
-   - Replace `pyo3_async_runtimes::get_event_loop` with `pyo3_async_runtimes::<runtime>::get_current_loop`
-5. After all conversions have been replaced with their `v0.14` counterparts, `pyo3_async_runtimes::try_init` can safely be removed.
-
-> The `v0.13` API has been removed in version `v0.15`
-
-### Migrating from 0.14 to 0.15+
-
-There have been a few changes to the API in order to support proper cancellation from Python and the `contextvars` module.
-
-- Any instance of `cancellable_future_into_py` and `local_cancellable_future_into_py` conversions can be replaced with their`future_into_py` and `local_future_into_py` counterparts.
-  > Cancellation support became the default behaviour in 0.15.
-- Instances of `*_with_loop` conversions should be replaced with the newer `*_with_locals` conversions.
-
-  ```rust no_run
-  use pyo3::prelude::*;
-
-  Python::with_gil(|py| -> PyResult<()> {
-
-      // *_with_loop conversions in 0.14
-      //
-      // let event_loop = pyo3_async_runtimes::get_running_loop(py)?;
-      //
-      // let fut = pyo3_async_runtimes::tokio::future_into_py_with_loop(
-      //     event_loop,
-      //     async move { Ok(Python::with_gil(|py| py.None())) }
-      // )?;
-      //
-      // should be replaced with *_with_locals in 0.15+
-      let fut = pyo3_async_runtimes::tokio::future_into_py_with_locals(
-          py,
-          pyo3_async_runtimes::tokio::get_current_locals(py)?,
-          async move { Ok(()) }
-      )?;
-
-      Ok(())
-  });
-  ```
-
-- `scope` and `scope_local` variants now accept `TaskLocals` instead of `event_loop`. You can usually just replace the `event_loop` with `pyo3_async_runtimes::TaskLocals::new(event_loop).copy_context(py)?`.
-- Return types for `future_into_py`, `future_into_py_with_locals` `local_future_into_py`, and `local_future_into_py_with_locals` are now constrained by the bound `IntoPy<PyObject>` instead of requiring the return type to be `PyObject`. This can make the return types for futures more flexible, but inference can also fail when the concrete type is ambiguous (for example when using `into()`). Sometimes the `into()` can just be removed,
-- `run`, and `run_until_complete` can now return any `Send + 'static` value.
-
-### Migrating from 0.15 to 0.16
-
-Actually, not much has changed in the API. I'm happy to say that the PyO3 Asyncio is reaching a
-pretty stable point in 0.16. For the most part, 0.16 has been about cleanup and removing deprecated
-functions from the API.
-
-PyO3 0.16 comes with a few API changes of its own, but one of the changes that most impacted PyO3
-Asyncio was it's decision to drop support for Python 3.6. PyO3 Asyncio has been using a few
-workarounds / hacks to support the pre-3.7 version of Python's asyncio library that are no longer
-necessary. PyO3 Asyncio's underlying implementation is now a bit cleaner because of this.
-
-PyO3 Asyncio 0.15 included some important fixes to the API in order to add support for proper task
-cancellation and allow for the preservation / use of contextvars in Python coroutines. This led to
-the deprecation of some 0.14 functions that were used for edge cases in favor of some more correct
-versions, and those deprecated functions are now removed from the API in 0.16.
-
-In addition, with PyO3 Asyncio 0.16, the library now has experimental support for conversions from
-Python's async generators into a Rust `Stream`. There are currently two versions `v1` and `v2` with
-slightly different performance and type signatures, so I'm hoping to get some feedback on which one
-works best for downstream users. Just enable the `unstable-streams` feature and you're good to go!
-
-> The inverse conversion, Rust `Stream` to Python async generator, may come in a later release if
-> requested!
+- Managing event loop references can be tricky with `pyo3-async-runtimes`. See [Event Loop References and ContextVars](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/#event-loop-references-and-contextvars) in the API docs to get a better intuition for how event loop references are managed in this library.
+- Testing `pyo3-async-runtimes` libraries and applications requires a custom test harness since Python requires control over the main thread. You can find a testing guide in the [API docs for the `testing` module](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/testing/index.html)
