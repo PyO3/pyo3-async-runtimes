@@ -10,6 +10,10 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 <!-- towncrier release notes start -->
 
+## [0.25.0] - 2025-05-14
+
+- Bump to pyo3 0.25. [#41](https://github.com/PyO3/pyo3-async-runtimes/pull/41)
+
 ## [0.24.0] - 2025-03-11
 
 - Bump to pyo3 0.24. [#34](https://github.com/PyO3/pyo3-async-runtimes/pull/34)
