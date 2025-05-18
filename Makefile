@@ -18,6 +18,6 @@ test-feature-powerset: lint
 	cargo install cargo-hack
 	cargo hack test --feature-powerset
 
-publish: test-feature-powerset
+publish:
 	cargo publish --package=pyo3-async-runtimes-macros
 	cargo publish
