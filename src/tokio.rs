@@ -16,6 +16,10 @@
 use std::ops::Deref;
 use std::{future::Future, pin::Pin, sync::Mutex};
 
+use crate::{
+    generic::{self, ContextExt, LocalContextExt, Runtime as GenericRuntime, SpawnLocalExt},
+    TaskLocals,
+};
 use ::tokio::{
     runtime::{Builder, Runtime},
     task,
@@ -25,11 +29,7 @@ use once_cell::{
     unsync::OnceCell as UnsyncOnceCell,
 };
 use pyo3::prelude::*;
-
-use crate::{
-    generic::{self, ContextExt, LocalContextExt, Runtime as GenericRuntime, SpawnLocalExt},
-    TaskLocals,
-};
+use tokio::runtime::Handle;
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span>
 /// re-exports for macros
@@ -52,15 +52,15 @@ pub use pyo3_async_runtimes_macros::tokio_main as main;
 pub use pyo3_async_runtimes_macros::tokio_test as test;
 
 enum Pyo3Runtime {
-    Borrowed(&'static Runtime),
+    Borrowed(Handle),
     Owned(Runtime),
 }
 impl Deref for Pyo3Runtime {
-    type Target = Runtime;
+    type Target = Handle;
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Borrowed(rt) => rt,
-            Self::Owned(rt) => rt,
+            Self::Owned(rt) => rt.handle(),
         }
     }
 }
@@ -179,14 +179,22 @@ pub fn init(builder: Builder) {
 ///
 /// Returns Ok(()) if success and Err(()) if it had been inited.
 #[allow(clippy::result_unit_err)]
-pub fn init_with_runtime(runtime: &'static Runtime) -> Result<(), ()> {
+pub fn init_with_runtime(runtime: &Runtime) -> Result<(), ()> {
+    init_with_runtime_handle(runtime.handle().clone())
+}
+
+/// Initialize the Tokio runtime with a custom Tokio runtime
+///
+/// Returns Ok(()) if success and Err(()) if it had been inited.
+#[allow(clippy::result_unit_err)]
+pub fn init_with_runtime_handle(handle: Handle) -> Result<(), ()> {
     TOKIO_RUNTIME
-        .set(Pyo3Runtime::Borrowed(runtime))
+        .set(Pyo3Runtime::Borrowed(handle))
         .map_err(|_| ())
 }
 
 /// Get a reference to the current tokio runtime
-pub fn get_runtime<'a>() -> &'a Runtime {
+pub fn get_runtime() -> &'static Handle {
     TOKIO_RUNTIME.get_or_init(|| {
         let rt = TOKIO_BUILDER
             .lock()
