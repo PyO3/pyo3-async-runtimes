@@ -25,7 +25,7 @@ pub(super) async fn test_into_future(event_loop: Py<PyAny>) -> PyResult<()> {
 
         pyo3_async_runtimes::into_future_with_locals(
             &TaskLocals::new(event_loop.into_bound(py)),
-            test_mod.call_method1("py_sleep", (1.into_pyobject(py).unwrap(),))?,
+            test_mod.call_method1("py_sleep", (1,))?,
         )
     })?;
 

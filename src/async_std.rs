@@ -513,7 +513,7 @@ where
 ///     Python::attach(|py| {
 ///         pyo3_async_runtimes::async_std::into_future(
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
+///                 .call_method1(py, "py_sleep", (seconds,))?
 ///                 .into_bound(py),
 ///         )
 ///     })?

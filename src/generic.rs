@@ -31,7 +31,7 @@ use futures::{channel::mpsc, SinkExt};
 use once_cell::sync::OnceCell;
 use pin_project_lite::pin_project;
 use pyo3::prelude::*;
-use pyo3::BoundObject;
+use pyo3::{BoundObject, IntoPyObjectExt};
 #[cfg(feature = "unstable-streams")]
 use std::marker::PhantomData;
 
@@ -349,10 +349,7 @@ fn set_result(
 
     let (complete, val) = match result {
         Ok(val) => (future.getattr("set_result")?, val.into_pyobject(py)?),
-        Err(err) => (
-            future.getattr("set_exception")?,
-            err.into_pyobject(py)?.into_any(),
-        ),
+        Err(err) => (future.getattr("set_exception")?, err.into_bound_py_any(py)?),
     };
     call_soon_threadsafe(event_loop, &none, (CheckedCompletor, future, complete, val))?;
 
@@ -457,7 +454,7 @@ fn set_result(
 ///     Python::attach(|py| {
 ///         pyo3_async_runtimes::generic::into_future::<MyCustomRuntime>(
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
+///                 .call_method1(py, "py_sleep", (seconds,))?
 ///                 .into_bound(py),
 ///         )
 ///     })?
@@ -622,10 +619,7 @@ where
                 let _ = set_result(
                     &locals2.event_loop(py),
                     future_tx1.bind(py),
-                    result.and_then(|val| match val.into_pyobject(py) {
-                        Ok(obj) => Ok(obj.into_any().unbind()),
-                        Err(err) => Err(err.into()),
-                    }),
+                    result.and_then(|val| val.into_py_any(py)),
                 )
                 .map_err(dump_err(py));
             });
@@ -1030,10 +1024,7 @@ where
                 let _ = set_result(
                     locals2.event_loop.bind(py),
                     future_tx1.bind(py),
-                    result.and_then(|val| match val.into_pyobject(py) {
-                        Ok(obj) => Ok(obj.into_any().unbind()),
-                        Err(err) => Err(err.into()),
-                    }),
+                    result.and_then(|val| val.into_py_any(py)),
                 )
                 .map_err(dump_err(py));
             });
@@ -1480,7 +1471,7 @@ where
 {
     fn send(&mut self, py: Python, locals: TaskLocals, item: Py<PyAny>) -> PyResult<Py<PyAny>> {
         match self.tx.try_send(item.clone_ref(py)) {
-            Ok(_) => Ok(true.into_pyobject(py)?.into_any().unbind()),
+            Ok(_) => true.into_py_any(py),
             Err(e) => {
                 if e.is_full() {
                     let mut tx = self.tx.clone();
@@ -1492,26 +1483,20 @@ where
                                 async move {
                                     if tx.flush().await.is_err() {
                                         // receiving side disconnected
-                                        return Python::attach(|py| {
-                                            Ok(false.into_pyobject(py)?.into_any().unbind())
-                                        });
+                                        return Python::attach(|py| false.into_py_any(py));
                                     }
                                     if tx.send(item).await.is_err() {
                                         // receiving side disconnected
-                                        return Python::attach(|py| {
-                                            Ok(false.into_pyobject(py)?.into_any().unbind())
-                                        });
+                                        return Python::attach(|py| false.into_py_any(py));
                                     }
-                                    Python::attach(|py| {
-                                        Ok(true.into_pyobject(py)?.into_any().unbind())
-                                    })
+                                    Python::attach(|py| true.into_py_any(py))
                                 },
                             )?
                             .into(),
                         )
                     })
                 } else {
-                    Ok(false.into_pyobject(py)?.into_any().unbind())
+                    false.into_py_any(py)
                 }
             }
         }

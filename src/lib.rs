@@ -631,7 +631,7 @@ fn call_soon_threadsafe<'py>(
 ///         pyo3_async_runtimes::into_future_with_locals(
 ///             &pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
+///                 .call_method1(py, "py_sleep", (seconds,))?
 ///                 .into_bound(py),
 ///         )
 ///     })?
