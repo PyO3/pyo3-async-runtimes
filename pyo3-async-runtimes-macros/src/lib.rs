@@ -49,7 +49,7 @@ pub fn async_std_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 #body
             }
 
-            Python::initialize();
+            pyo3::Python::initialize();
 
             pyo3::Python::attach(|py| {
                 pyo3_async_runtimes::async_std::run(py, main())
@@ -154,7 +154,7 @@ pub fn async_std_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         } else {
             quote! {
-                let event_loop = Python::attach(|py| {
+                let event_loop = pyo3::Python::attach(|py| {
                     pyo3_async_runtimes::async_std::get_current_loop(py).unwrap().into()
                 });
                 Box::pin(pyo3_async_runtimes::async_std::re_exports::spawn_blocking(move || {
@@ -265,7 +265,7 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         } else {
             quote! {
-                let event_loop = Python::attach(|py| {
+                let event_loop = pyo3::Python::attach(|py| {
                     pyo3_async_runtimes::tokio::get_current_loop(py).unwrap().into()
                 });
                 Box::pin(async move {

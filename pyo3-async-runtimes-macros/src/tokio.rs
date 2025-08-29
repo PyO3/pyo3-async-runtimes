@@ -268,7 +268,7 @@ fn parse_knobs(
                 #body
             }
 
-            Python::initialize();
+            pyo3::Python::initialize();
 
             let mut builder = #builder;
             #builder_init;
