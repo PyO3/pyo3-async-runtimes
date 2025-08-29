@@ -397,17 +397,16 @@ pub mod doc_test {
 use std::future::Future;
 
 use futures::channel::oneshot;
-use once_cell::sync::OnceCell;
-use pyo3::{call::PyCallArgs, prelude::*, types::PyDict};
+use pyo3::{call::PyCallArgs, prelude::*, sync::PyOnceLock, types::PyDict};
 
-static ASYNCIO: OnceCell<Py<PyAny>> = OnceCell::new();
-static CONTEXTVARS: OnceCell<Py<PyAny>> = OnceCell::new();
-static ENSURE_FUTURE: OnceCell<Py<PyAny>> = OnceCell::new();
-static GET_RUNNING_LOOP: OnceCell<Py<PyAny>> = OnceCell::new();
+static ASYNCIO: PyOnceLock<Py<PyAny>> = PyOnceLock::new();
+static CONTEXTVARS: PyOnceLock<Py<PyAny>> = PyOnceLock::new();
+static ENSURE_FUTURE: PyOnceLock<Py<PyAny>> = PyOnceLock::new();
+static GET_RUNNING_LOOP: PyOnceLock<Py<PyAny>> = PyOnceLock::new();
 
 fn ensure_future<'p>(py: Python<'p>, awaitable: &Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
     ENSURE_FUTURE
-        .get_or_try_init(|| -> PyResult<Py<PyAny>> {
+        .get_or_try_init(py, || -> PyResult<Py<PyAny>> {
             Ok(asyncio(py)?.getattr("ensure_future")?.into())
         })?
         .bind(py)
@@ -439,7 +438,7 @@ fn close(event_loop: Bound<PyAny>) -> PyResult<()> {
 
 fn asyncio(py: Python<'_>) -> PyResult<&Bound<'_, PyAny>> {
     ASYNCIO
-        .get_or_try_init(|| Ok(py.import("asyncio")?.into()))
+        .get_or_try_init(py, || Ok(py.import("asyncio")?.into()))
         .map(|asyncio| asyncio.bind(py))
 }
 
@@ -450,7 +449,7 @@ pub fn get_running_loop(py: Python) -> PyResult<Bound<PyAny>> {
     // Ideally should call get_running_loop, but calls get_event_loop for compatibility when
     // get_running_loop is not available.
     GET_RUNNING_LOOP
-        .get_or_try_init(|| -> PyResult<Py<PyAny>> {
+        .get_or_try_init(py, || -> PyResult<Py<PyAny>> {
             let asyncio = asyncio(py)?;
 
             Ok(asyncio.getattr("get_running_loop")?.into())
@@ -461,7 +460,7 @@ pub fn get_running_loop(py: Python) -> PyResult<Bound<PyAny>> {
 
 fn contextvars(py: Python<'_>) -> PyResult<&Bound<'_, PyAny>> {
     Ok(CONTEXTVARS
-        .get_or_try_init(|| py.import("contextvars").map(|m| m.into()))?
+        .get_or_try_init(py, || py.import("contextvars").map(|m| m.into()))?
         .bind(py))
 }
 
