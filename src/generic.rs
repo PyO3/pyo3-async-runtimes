@@ -181,7 +181,7 @@ where
 /// #
 /// # use pyo3::prelude::*;
 /// #
-/// # Python::with_gil(|py| -> PyResult<()> {
+/// # Python::attach(|py| -> PyResult<()> {
 /// # let event_loop = py.import("asyncio")?.call_method0("new_event_loop")?;
 /// # #[cfg(feature = "tokio-runtime")]
 /// pyo3_async_runtimes::generic::run_until_complete::<MyCustomRuntime, _, _>(&event_loop, async move {
@@ -287,7 +287,7 @@ where
 /// # use pyo3::prelude::*;
 /// #
 /// fn main() {
-///     Python::with_gil(|py| {
+///     Python::attach(|py| {
 ///         pyo3_async_runtimes::generic::run::<MyCustomRuntime, _, _>(py, async move {
 ///             custom_sleep(Duration::from_secs(1)).await;
 ///             Ok(())
@@ -342,7 +342,7 @@ impl CheckedCompletor {
 fn set_result(
     event_loop: &Bound<PyAny>,
     future: &Bound<PyAny>,
-    result: PyResult<PyObject>,
+    result: PyResult<Py<PyAny>>,
 ) -> PyResult<()> {
     let py = event_loop.py();
     let none = py.None().into_bound(py);
@@ -442,7 +442,7 @@ fn set_result(
 /// "#;
 ///
 /// async fn py_sleep(seconds: f32) -> PyResult<()> {
-///     let test_mod = Python::with_gil(|py| -> PyResult<PyObject> {
+///     let test_mod = Python::attach(|py| -> PyResult<Py<PyAny>> {
 ///         Ok(
 ///             PyModule::from_code(
 ///                 py,
@@ -454,7 +454,7 @@ fn set_result(
 ///         )
 ///     })?;
 ///
-///     Python::with_gil(|py| {
+///     Python::attach(|py| {
 ///         pyo3_async_runtimes::generic::into_future::<MyCustomRuntime>(
 ///             test_mod
 ///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
@@ -467,7 +467,7 @@ fn set_result(
 /// ```
 pub fn into_future<R>(
     awaitable: Bound<PyAny>,
-) -> PyResult<impl Future<Output = PyResult<PyObject>> + Send>
+) -> PyResult<impl Future<Output = PyResult<Py<PyAny>>> + Send>
 where
     R: Runtime + ContextExt,
 {
@@ -598,20 +598,20 @@ where
         },),
     )?;
 
-    let future_tx1 = PyObject::from(py_fut.clone());
+    let future_tx1: Py<PyAny> = py_fut.clone().into();
     let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn(async move {
-        let locals2 = Python::with_gil(|py| locals.clone_ref(py));
+        let locals2 = Python::attach(|py| locals.clone_ref(py));
 
         if let Err(e) = R::spawn(async move {
             let result = R::scope(
-                Python::with_gil(|py| locals2.clone_ref(py)),
+                Python::attach(|py| locals2.clone_ref(py)),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
 
-            Python::with_gil(move |py| {
+            Python::attach(move |py| {
                 if cancelled(future_tx1.bind(py))
                     .map_err(dump_err(py))
                     .unwrap_or(false)
@@ -633,7 +633,7 @@ where
         .await
         {
             if e.is_panic() {
-                Python::with_gil(move |py| {
+                Python::attach(move |py| {
                     if cancelled(future_tx2.bind(py))
                         .map_err(dump_err(py))
                         .unwrap_or(false)
@@ -1006,20 +1006,20 @@ where
         },),
     )?;
 
-    let future_tx1 = PyObject::from(py_fut.clone());
+    let future_tx1: Py<PyAny> = py_fut.clone().into();
     let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn_local(async move {
-        let locals2 = Python::with_gil(|py| locals.clone_ref(py));
+        let locals2 = Python::attach(|py| locals.clone_ref(py));
 
         if let Err(e) = R::spawn_local(async move {
             let result = R::scope_local(
-                Python::with_gil(|py| locals2.clone_ref(py)),
+                Python::attach(|py| locals2.clone_ref(py)),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
 
-            Python::with_gil(move |py| {
+            Python::attach(move |py| {
                 if cancelled(future_tx1.bind(py))
                     .map_err(dump_err(py))
                     .unwrap_or(false)
@@ -1041,7 +1041,7 @@ where
         .await
         {
             if e.is_panic() {
-                Python::with_gil(move |py| {
+                Python::attach(move |py| {
                     if cancelled(future_tx2.bind(py))
                         .map_err(dump_err(py))
                         .unwrap_or(false)
@@ -1279,7 +1279,7 @@ where
 /// "#;
 ///
 /// # async fn test_async_gen() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -1294,7 +1294,7 @@ where
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -1308,23 +1308,23 @@ where
 pub fn into_stream_with_locals_v1<R>(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static>
+) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static>
 where
     R: Runtime,
 {
     let (tx, rx) = async_channel::bounded(1);
-    let anext = PyObject::from(gen.getattr("__anext__")?);
+    let anext: Py<PyAny> = gen.getattr("__anext__")?.into();
 
     R::spawn(async move {
         loop {
-            let fut = Python::with_gil(|py| -> PyResult<_> {
+            let fut = Python::attach(|py| -> PyResult<_> {
                 into_future_with_locals(&locals, anext.bind(py).call0()?)
             });
             let item = match fut {
                 Ok(fut) => match fut.await {
                     Ok(item) => Ok(item),
                     Err(e) => {
-                        let stop_iter = Python::with_gil(|py| {
+                        let stop_iter = Python::attach(|py| {
                             e.is_instance_of::<pyo3::exceptions::PyStopAsyncIteration>(py)
                         });
 
@@ -1428,7 +1428,7 @@ where
 /// "#;
 ///
 /// # async fn test_async_gen() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -1440,7 +1440,7 @@ where
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -1452,7 +1452,7 @@ where
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v1<R>(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static>
+) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static>
 where
     R: Runtime + ContextExt,
 {
@@ -1460,7 +1460,7 @@ where
 }
 
 trait Sender: Send + 'static {
-    fn send(&mut self, py: Python, locals: TaskLocals, item: PyObject) -> PyResult<PyObject>;
+    fn send(&mut self, py: Python, locals: TaskLocals, item: Py<PyAny>) -> PyResult<Py<PyAny>>;
     fn close(&mut self) -> PyResult<()>;
 }
 
@@ -1470,7 +1470,7 @@ where
     R: Runtime,
 {
     runtime: PhantomData<R>,
-    tx: mpsc::Sender<PyObject>,
+    tx: mpsc::Sender<Py<PyAny>>,
 }
 
 #[cfg(feature = "unstable-streams")]
@@ -1478,31 +1478,35 @@ impl<R> Sender for GenericSender<R>
 where
     R: Runtime + ContextExt,
 {
-    fn send(&mut self, py: Python, locals: TaskLocals, item: PyObject) -> PyResult<PyObject> {
+    fn send(&mut self, py: Python, locals: TaskLocals, item: Py<PyAny>) -> PyResult<Py<PyAny>> {
         match self.tx.try_send(item.clone_ref(py)) {
             Ok(_) => Ok(true.into_pyobject(py)?.into_any().unbind()),
             Err(e) => {
                 if e.is_full() {
                     let mut tx = self.tx.clone();
-                    Python::with_gil(move |py| {
+                    Python::attach(move |py| {
                         Ok(
-                            future_into_py_with_locals::<R, _, PyObject>(py, locals, async move {
-                                if tx.flush().await.is_err() {
-                                    // receiving side disconnected
-                                    return Python::with_gil(|py| {
-                                        Ok(false.into_pyobject(py)?.into_any().unbind())
-                                    });
-                                }
-                                if tx.send(item).await.is_err() {
-                                    // receiving side disconnected
-                                    return Python::with_gil(|py| {
-                                        Ok(false.into_pyobject(py)?.into_any().unbind())
-                                    });
-                                }
-                                Python::with_gil(|py| {
-                                    Ok(true.into_pyobject(py)?.into_any().unbind())
-                                })
-                            })?
+                            future_into_py_with_locals::<R, _, Py<PyAny>>(
+                                py,
+                                locals,
+                                async move {
+                                    if tx.flush().await.is_err() {
+                                        // receiving side disconnected
+                                        return Python::attach(|py| {
+                                            Ok(false.into_pyobject(py)?.into_any().unbind())
+                                        });
+                                    }
+                                    if tx.send(item).await.is_err() {
+                                        // receiving side disconnected
+                                        return Python::attach(|py| {
+                                            Ok(false.into_pyobject(py)?.into_any().unbind())
+                                        });
+                                    }
+                                    Python::attach(|py| {
+                                        Ok(true.into_pyobject(py)?.into_any().unbind())
+                                    })
+                                },
+                            )?
                             .into(),
                         )
                     })
@@ -1525,8 +1529,8 @@ struct SenderGlue {
 }
 #[pymethods]
 impl SenderGlue {
-    pub fn send(&mut self, item: PyObject) -> PyResult<PyObject> {
-        Python::with_gil(|py| {
+    pub fn send(&mut self, item: Py<PyAny>) -> PyResult<Py<PyAny>> {
+        Python::attach(|py| {
             self.tx
                 .lock()
                 .unwrap()
@@ -1637,7 +1641,7 @@ async def forward(gen, sender):
 /// "#;
 ///
 /// # async fn test_async_gen() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -1652,7 +1656,7 @@ async def forward(gen, sender):
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -1665,16 +1669,16 @@ async def forward(gen, sender):
 pub fn into_stream_with_locals_v2<R>(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyObject> + 'static>
+) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static>
 where
     R: Runtime + ContextExt,
 {
     use std::ffi::CString;
 
-    static GLUE_MOD: OnceCell<PyObject> = OnceCell::new();
+    static GLUE_MOD: OnceCell<Py<PyAny>> = OnceCell::new();
     let py = gen.py();
     let glue = GLUE_MOD
-        .get_or_try_init(|| -> PyResult<PyObject> {
+        .get_or_try_init(|| -> PyResult<Py<PyAny>> {
             Ok(PyModule::from_code(
                 py,
                 &CString::new(STREAM_GLUE).unwrap(),
@@ -1788,7 +1792,7 @@ where
 /// "#;
 ///
 /// # async fn test_async_gen() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -1800,7 +1804,7 @@ where
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -1812,7 +1816,7 @@ where
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v2<R>(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyObject> + 'static>
+) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static>
 where
     R: Runtime + ContextExt,
 {

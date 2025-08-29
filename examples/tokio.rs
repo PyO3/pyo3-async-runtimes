@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 #[pyo3_async_runtimes::tokio::main]
 async fn main() -> PyResult<()> {
-    let fut = Python::with_gil(|py| {
+    let fut = Python::attach(|py| {
         let asyncio = py.import("asyncio")?;
 
         // convert asyncio.sleep into a Rust Future

@@ -62,7 +62,7 @@ use pyo3::prelude::*;
 
 #[pyo3_async_runtimes::async_std::main]
 async fn main() -> PyResult<()> {
-    let fut = Python::with_gil(|py| {
+    let fut = Python::attach(|py| {
         let asyncio = py.import("asyncio")?;
         // convert asyncio.sleep into a Rust Future
         pyo3_async_runtimes::async_std::into_future(asyncio.call_method1("sleep", (1.into_pyobject(py).unwrap(),))?)
@@ -92,7 +92,7 @@ use pyo3::prelude::*;
 
 #[pyo3_async_runtimes::tokio::main]
 async fn main() -> PyResult<()> {
-    let fut = Python::with_gil(|py| {
+    let fut = Python::attach(|py| {
         let asyncio = py.import("asyncio")?;
         // convert asyncio.sleep into a Rust Future
         pyo3_async_runtimes::tokio::into_future(asyncio.call_method1("sleep", (1.into_pyobject(py).unwrap(),))?)
@@ -234,7 +234,7 @@ use pyo3::prelude::*;
 
 #[pyo3_async_runtimes::tokio::main]
 async fn main() -> PyResult<()> {
-    let future = Python::with_gil(|py| -> PyResult<_> {
+    let future = Python::attach(|py| -> PyResult<_> {
         // import the module containing the py_sleep function
         let example = py.import("example")?;
 
@@ -354,7 +354,7 @@ use pyo3::prelude::*;
 async fn main() -> PyResult<()> {
     // PyO3 is initialized - Ready to go
 
-    let fut = Python::with_gil(|py| -> PyResult<_> {
+    let fut = Python::attach(|py| -> PyResult<_> {
         let asyncio = py.import("asyncio")?;
 
         // convert asyncio.sleep into a Rust Future
@@ -500,18 +500,18 @@ pyo3-async-runtimes = { version = "0.26", features = ["async-std-runtime"] }
 use pyo3::{prelude::*, types::PyType};
 
 fn main() -> PyResult<()> {
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let uvloop = py.import("uvloop")?;
         uvloop.call_method0("install")?;
 
         // store a reference for the assertion
-        let uvloop = PyObject::from(uvloop);
+        let uvloop: Py<PyAny> = uvloop.into();
 
         pyo3_async_runtimes::async_std::run(py, async move {
             // verify that we are on a uvloop.Loop
-            Python::with_gil(|py| -> PyResult<()> {
+            Python::attach(|py| -> PyResult<()> {
                 assert!(uvloop
                     .bind(py)
                     .getattr("Loop")?

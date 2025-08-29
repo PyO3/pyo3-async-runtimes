@@ -49,9 +49,9 @@ pub fn async_std_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 #body
             }
 
-            pyo3::prepare_freethreaded_python();
+            Python::initialize();
 
-            pyo3::Python::with_gil(|py| {
+            pyo3::Python::attach(|py| {
                 pyo3_async_runtimes::async_std::run(py, main())
                     .map_err(|e| {
                         e.print_and_set_sys_last_vars(py);
@@ -129,7 +129,7 @@ pub fn tokio_main(args: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// // blocking test functions can optionally accept an event_loop parameter
 /// #[pyo3_async_runtimes::async_std::test]
-/// fn test_blocking_sleep_with_event_loop(event_loop: PyObject) -> PyResult<()> {
+/// fn test_blocking_sleep_with_event_loop(event_loop: Py<PyAny>) -> PyResult<()> {
 ///     thread::sleep(Duration::from_secs(1));
 ///     Ok(())
 /// }
@@ -154,7 +154,7 @@ pub fn async_std_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         } else {
             quote! {
-                let event_loop = Python::with_gil(|py| {
+                let event_loop = Python::attach(|py| {
                     pyo3_async_runtimes::async_std::get_current_loop(py).unwrap().into()
                 });
                 Box::pin(pyo3_async_runtimes::async_std::re_exports::spawn_blocking(move || {
@@ -226,7 +226,7 @@ pub fn async_std_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// // blocking test functions can optionally accept an event_loop parameter
 /// #[pyo3_async_runtimes::tokio::test]
-/// fn test_blocking_sleep_with_event_loop(event_loop: PyObject) -> PyResult<()> {
+/// fn test_blocking_sleep_with_event_loop(event_loop: Py<PyAny>) -> PyResult<()> {
 ///     thread::sleep(Duration::from_secs(1));
 ///     Ok(())
 /// }
@@ -265,7 +265,7 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         } else {
             quote! {
-                let event_loop = Python::with_gil(|py| {
+                let event_loop = Python::attach(|py| {
                     pyo3_async_runtimes::tokio::get_current_loop(py).unwrap().into()
                 });
                 Box::pin(async move {

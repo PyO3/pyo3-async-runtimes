@@ -268,7 +268,7 @@ fn parse_knobs(
                 #body
             }
 
-            pyo3::prepare_freethreaded_python();
+            Python::initialize();
 
             let mut builder = #builder;
             #builder_init;
@@ -277,7 +277,7 @@ fn parse_knobs(
 
             #rt_init
 
-            pyo3::Python::with_gil(|py| {
+            pyo3::Python::attach(|py| {
                 pyo3_async_runtimes::tokio::run(py, main())
                     .map_err(|e| {
                         e.print_and_set_sys_last_vars(py);
