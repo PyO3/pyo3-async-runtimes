@@ -31,7 +31,7 @@ use futures::{channel::mpsc, SinkExt};
 use once_cell::sync::OnceCell;
 use pin_project_lite::pin_project;
 use pyo3::prelude::*;
-use pyo3::{BoundObject, IntoPyObjectExt};
+use pyo3::IntoPyObjectExt;
 #[cfg(feature = "unstable-streams")]
 use std::marker::PhantomData;
 
