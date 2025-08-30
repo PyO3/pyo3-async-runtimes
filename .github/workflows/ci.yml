@@ -47,7 +47,18 @@ jobs:
       fail-fast: false # If one platform fails, allow the rest to keep testing.
       matrix:
         rust: [stable]
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.13t", "pypy-3.9", "pypy-3.10"]
+        python-version:
+          [
+            "3.9",
+            "3.10",
+            "3.11",
+            "3.12",
+            "3.13",
+            "3.13t",
+            "3.14",
+            "3.14t",
+            "pypy-3.11",
+          ]
         platform:
           [
             {
@@ -66,10 +77,6 @@ jobs:
               rust-target: "x86_64-pc-windows-msvc",
             },
           ]
-        exclude:
-          # PyPy doesn't release 32-bit Windows builds any more
-          - python-version: pypy-3.9
-            platform: { os: "windows-latest", python-architecture: "x86" }
         include:
           # Test minimal supported Rust version
           - rust: 1.63.0
@@ -97,7 +104,12 @@ jobs:
           # Test 32-bit windows just on latest Python
           - rust: stable
             python-version: "3.13"
-            platform: { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc" }
+            platform:
+              {
+                os: "windows-latest",
+                python-architecture: "x86",
+                rust-target: "i686-pc-windows-msvc",
+              }
 
     steps:
       - uses: actions/checkout@v4
