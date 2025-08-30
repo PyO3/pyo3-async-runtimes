@@ -414,7 +414,7 @@ fn ensure_future<'p>(py: Python<'p>, awaitable: &Bound<'p, PyAny>) -> PyResult<B
         .call1((awaitable,))
 }
 
-fn create_future(event_loop: Bound<PyAny>) -> PyResult<Bound<'_, PyAny>> {
+fn create_future(event_loop: Bound<'_, PyAny>) -> PyResult<Bound<'_, PyAny>> {
     event_loop.call_method0("create_future")
 }
 
@@ -437,7 +437,7 @@ fn close(event_loop: Bound<PyAny>) -> PyResult<()> {
     Ok(())
 }
 
-fn asyncio(py: Python) -> PyResult<&Bound<PyAny>> {
+fn asyncio(py: Python<'_>) -> PyResult<&Bound<'_, PyAny>> {
     ASYNCIO
         .get_or_try_init(|| Ok(py.import("asyncio")?.into()))
         .map(|asyncio| asyncio.bind(py))
@@ -459,7 +459,7 @@ pub fn get_running_loop(py: Python) -> PyResult<Bound<PyAny>> {
         .call0()
 }
 
-fn contextvars(py: Python) -> PyResult<&Bound<PyAny>> {
+fn contextvars(py: Python<'_>) -> PyResult<&Bound<'_, PyAny>> {
     Ok(CONTEXTVARS
         .get_or_try_init(|| py.import("contextvars").map(|m| m.into()))?
         .bind(py))
