@@ -138,9 +138,13 @@ jobs:
       - name: Build
         run: cargo build --features=${{env.features}} --verbose --target ${{ matrix.platform.rust-target }}
 
-      # uvloop doesn't compile under Windows and PyPy, nor for free-threaded Python
-      - if: ${{ matrix.platform.os != 'windows-latest' && !startsWith(matrix.python-version, 'pypy') && !endsWith(matrix.python-version, 't') }}
-        name: Install pyo3-asyncio test dependencies
+      # uvloop doesn't compile under
+      # Windows, https://github.com/MagicStack/uvloop/issues/536,
+      # nor PyPy, https://github.com/MagicStack/uvloop/issues/537
+      # nor for free-threaded Python, see https://github.com/MagicStack/uvloop/issues/642
+      # nor on 3.14, see https://github.com/MagicStack/uvloop/issues/637
+      - if: ${{ matrix.platform.os != 'windows-latest' && !startsWith(matrix.python-version, 'pypy') && !endsWith(matrix.python-version, 't') && !startsWith(matrix.python-version, '3.14') }}
+        name: Install uvloop
         run: |
           python -m pip install -U uvloop
 
