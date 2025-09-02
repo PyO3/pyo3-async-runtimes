@@ -12,6 +12,11 @@ fn main() -> pyo3::PyResult<()> {
             return Ok(());
         }
 
+        // uvloop not yet supported on 3.14
+        if py.version_info() >= (3, 14) {
+            return Ok(());
+        }
+
         let uvloop = py.import("uvloop")?;
         uvloop.call_method0("install")?;
 
