@@ -79,7 +79,7 @@ jobs:
           ]
         include:
           # Test minimal supported Rust version
-          - rust: 1.63.0
+          - rust: 1.74.0
             python-version: "3.13"
             platform:
               {
