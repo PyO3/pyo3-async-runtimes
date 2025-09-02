@@ -596,15 +596,11 @@ where
     let future_tx1: Py<PyAny> = py_fut.clone().into();
     let future_tx2 = future_tx1.clone_ref(py);
 
-    R::spawn(async move {
-        let locals2 = Python::attach(|py| locals.clone_ref(py));
+    let (locals2, locals3) = Python::attach(|py| (locals.clone_ref(py), locals.clone_ref(py)));
 
+    R::spawn(async move {
         if let Err(e) = R::spawn(async move {
-            let result = R::scope(
-                Python::attach(|py| locals2.clone_ref(py)),
-                Cancellable::new_with_cancel_rx(fut, cancel_rx),
-            )
-            .await;
+            let result = R::scope(locals2, Cancellable::new_with_cancel_rx(fut, cancel_rx)).await;
 
             Python::attach(move |py| {
                 if cancelled(future_tx1.bind(py))
@@ -615,7 +611,7 @@ where
                 }
 
                 let _ = set_result(
-                    &locals2.event_loop(py),
+                    &locals3.event_loop(py),
                     future_tx1.bind(py),
                     result.and_then(|val| val.into_py_any(py)),
                 )
