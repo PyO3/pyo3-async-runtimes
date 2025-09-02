@@ -126,12 +126,6 @@ jobs:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.platform.rust-target }}
 
-      - if: ${{ matrix.msrv == 'MSRV' }}
-        name: Set MSRV dependencies
-        run: |
-          cargo add tokio@=1.38.1
-          cargo update -p once_cell --precise 1.20.3
-
       - name: Build (no features)
         run: cargo build --no-default-features --verbose --target ${{ matrix.platform.rust-target }}
 

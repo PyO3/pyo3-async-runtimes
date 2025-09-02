@@ -13,17 +13,16 @@
 //! features = ["unstable-streams"]
 //! ```
 
+use std::cell::OnceCell;
 use std::ops::Deref;
+use std::sync::OnceLock;
 use std::{future::Future, pin::Pin, sync::Mutex};
 
 use ::tokio::{
     runtime::{Builder, Runtime},
     task,
 };
-use once_cell::{
-    sync::{Lazy, OnceCell},
-    unsync::OnceCell as UnsyncOnceCell,
-};
+use once_cell::sync::Lazy;
 use pyo3::prelude::*;
 
 use crate::{
@@ -66,7 +65,7 @@ impl Deref for Pyo3Runtime {
 }
 
 static TOKIO_BUILDER: Lazy<Mutex<Builder>> = Lazy::new(|| Mutex::new(multi_thread()));
-static TOKIO_RUNTIME: OnceCell<Pyo3Runtime> = OnceCell::new();
+static TOKIO_RUNTIME: OnceLock<Pyo3Runtime> = OnceLock::new();
 
 impl generic::JoinError for task::JoinError {
     fn is_panic(&self) -> bool {
@@ -80,7 +79,7 @@ impl generic::JoinError for task::JoinError {
 struct TokioRuntime;
 
 tokio::task_local! {
-    static TASK_LOCALS: UnsyncOnceCell<TaskLocals>;
+    static TASK_LOCALS: OnceCell<TaskLocals>;
 }
 
 impl GenericRuntime for TokioRuntime {
@@ -102,7 +101,7 @@ impl ContextExt for TokioRuntime {
     where
         F: Future<Output = R> + Send + 'static,
     {
-        let cell = UnsyncOnceCell::new();
+        let cell = OnceCell::new();
         cell.set(locals).unwrap();
 
         Box::pin(TASK_LOCALS.scope(cell, fut))
@@ -132,7 +131,7 @@ impl LocalContextExt for TokioRuntime {
     where
         F: Future<Output = R> + 'static,
     {
-        let cell = UnsyncOnceCell::new();
+        let cell = OnceCell::new();
         cell.set(locals).unwrap();
 
         Box::pin(TASK_LOCALS.scope(cell, fut))

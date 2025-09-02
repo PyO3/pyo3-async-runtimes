@@ -27,10 +27,9 @@ use crate::{
 use futures::channel::oneshot;
 #[cfg(feature = "unstable-streams")]
 use futures::{channel::mpsc, SinkExt};
-#[cfg(feature = "unstable-streams")]
-use once_cell::sync::OnceCell;
 use pin_project_lite::pin_project;
 use pyo3::prelude::*;
+use pyo3::sync::PyOnceLock;
 use pyo3::IntoPyObjectExt;
 #[cfg(feature = "unstable-streams")]
 use std::marker::PhantomData;
@@ -1660,10 +1659,10 @@ where
 {
     use std::ffi::CString;
 
-    static GLUE_MOD: OnceCell<Py<PyAny>> = OnceCell::new();
+    static GLUE_MOD: PyOnceLock<Py<PyAny>> = PyOnceLock::new();
     let py = gen.py();
     let glue = GLUE_MOD
-        .get_or_try_init(|| -> PyResult<Py<PyAny>> {
+        .get_or_try_init(py, || -> PyResult<Py<PyAny>> {
             Ok(PyModule::from_code(
                 py,
                 &CString::new(STREAM_GLUE).unwrap(),
