@@ -13,17 +13,16 @@
 //! features = ["unstable-streams"]
 //! ```
 
+use std::cell::OnceCell;
 use std::ops::Deref;
+use std::sync::OnceLock;
 use std::{future::Future, pin::Pin, sync::Mutex};
 
 use ::tokio::{
     runtime::{Builder, Runtime},
     task,
 };
-use once_cell::{
-    sync::{Lazy, OnceCell},
-    unsync::OnceCell as UnsyncOnceCell,
-};
+use once_cell::sync::Lazy;
 use pyo3::prelude::*;
 
 use crate::{
@@ -66,7 +65,7 @@ impl Deref for Pyo3Runtime {
 }
 
 static TOKIO_BUILDER: Lazy<Mutex<Builder>> = Lazy::new(|| Mutex::new(multi_thread()));
-static TOKIO_RUNTIME: OnceCell<Pyo3Runtime> = OnceCell::new();
+static TOKIO_RUNTIME: OnceLock<Pyo3Runtime> = OnceLock::new();
 
 impl generic::JoinError for task::JoinError {
     fn is_panic(&self) -> bool {
@@ -80,7 +79,7 @@ impl generic::JoinError for task::JoinError {
 struct TokioRuntime;
 
 tokio::task_local! {
-    static TASK_LOCALS: UnsyncOnceCell<TaskLocals>;
+    static TASK_LOCALS: OnceCell<TaskLocals>;
 }
 
 impl GenericRuntime for TokioRuntime {
@@ -102,7 +101,7 @@ impl ContextExt for TokioRuntime {
     where
         F: Future<Output = R> + Send + 'static,
     {
-        let cell = UnsyncOnceCell::new();
+        let cell = OnceCell::new();
         cell.set(locals).unwrap();
 
         Box::pin(TASK_LOCALS.scope(cell, fut))
@@ -112,7 +111,7 @@ impl ContextExt for TokioRuntime {
         TASK_LOCALS
             .try_with(|c| {
                 c.get()
-                    .map(|locals| Python::with_gil(|py| locals.clone_ref(py)))
+                    .map(|locals| Python::attach(|py| locals.clone_ref(py)))
             })
             .unwrap_or_default()
     }
@@ -132,7 +131,7 @@ impl LocalContextExt for TokioRuntime {
     where
         F: Future<Output = R> + 'static,
     {
-        let cell = UnsyncOnceCell::new();
+        let cell = OnceCell::new();
         cell.set(locals).unwrap();
 
         Box::pin(TASK_LOCALS.scope(cell, fut))
@@ -220,8 +219,8 @@ fn multi_thread() -> Builder {
 /// #
 /// # use pyo3::prelude::*;
 /// #
-/// # pyo3::prepare_freethreaded_python();
-/// # Python::with_gil(|py| -> PyResult<()> {
+/// # Python::initialize();
+/// # Python::attach(|py| -> PyResult<()> {
 /// # let event_loop = py.import("asyncio")?.call_method0("new_event_loop")?;
 /// pyo3_async_runtimes::tokio::run_until_complete(event_loop, async move {
 ///     tokio::time::sleep(Duration::from_secs(1)).await;
@@ -252,7 +251,7 @@ where
 /// # use pyo3::prelude::*;
 /// #
 /// fn main() {
-///     Python::with_gil(|py| {
+///     Python::attach(|py| {
 ///         pyo3_async_runtimes::tokio::run(py, async move {
 ///             tokio::time::sleep(Duration::from_secs(1)).await;
 ///             Ok(())
@@ -310,7 +309,7 @@ where
 ///         pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///         async move {
 ///             tokio::time::sleep(Duration::from_secs(secs)).await;
-///             Python::with_gil(|py| Ok(py.None()))
+///             Python::attach(|py| Ok(py.None()))
 ///         }
 ///     )
 /// }
@@ -413,7 +412,7 @@ where
 ///         pyo3_async_runtimes::tokio::get_current_locals(py)?,
 ///         async move {
 ///             tokio::time::sleep(Duration::from_secs(*secs)).await;
-///             Python::with_gil(|py| Ok(py.None()))
+///             Python::attach(|py| Ok(py.None()))
 ///         }
 ///     )
 /// }
@@ -421,7 +420,7 @@ where
 /// # #[cfg(all(feature = "tokio-runtime", feature = "attributes"))]
 /// #[pyo3_async_runtimes::tokio::main]
 /// async fn main() -> PyResult<()> {
-///     let locals = Python::with_gil(|py| -> PyResult<_> {
+///     let locals = Python::attach(|py| -> PyResult<_> {
 ///         pyo3_async_runtimes::tokio::get_current_locals(py)
 ///     })?;
 ///
@@ -433,7 +432,7 @@ where
 ///         tokio::task::LocalSet::new().block_on(
 ///             pyo3_async_runtimes::tokio::get_runtime(),
 ///             pyo3_async_runtimes::tokio::scope_local(locals, async {
-///                 Python::with_gil(|py| {
+///                 Python::attach(|py| {
 ///                     let py_future = sleep_for(py, 1)?;
 ///                     pyo3_async_runtimes::tokio::into_future(py_future)
 ///                 })?
@@ -506,7 +505,7 @@ where
 /// # #[cfg(all(feature = "tokio-runtime", feature = "attributes"))]
 /// #[pyo3_async_runtimes::tokio::main]
 /// async fn main() -> PyResult<()> {
-///     let locals = Python::with_gil(|py| {
+///     let locals = Python::attach(|py| {
 ///         pyo3_async_runtimes::tokio::get_current_locals(py).unwrap()
 ///     });
 ///
@@ -518,7 +517,7 @@ where
 ///         tokio::task::LocalSet::new().block_on(
 ///             pyo3_async_runtimes::tokio::get_runtime(),
 ///             pyo3_async_runtimes::tokio::scope_local(locals, async {
-///                 Python::with_gil(|py| {
+///                 Python::attach(|py| {
 ///                     let py_future = sleep_for(py, 1)?;
 ///                     pyo3_async_runtimes::tokio::into_future(py_future)
 ///                 })?
@@ -549,8 +548,8 @@ where
 ///
 /// This function converts the `awaitable` into a Python Task using `run_coroutine_threadsafe`. A
 /// completion handler sends the result of this Task through a
-/// `futures::channel::oneshot::Sender<PyResult<PyObject>>` and the future returned by this function
-/// simply awaits the result through the `futures::channel::oneshot::Receiver<PyResult<PyObject>>`.
+/// `futures::channel::oneshot::Sender<PyResult<Py<PyAny>>>` and the future returned by this function
+/// simply awaits the result through the `futures::channel::oneshot::Receiver<PyResult<Py<PyAny>>>`.
 ///
 /// # Arguments
 /// * `awaitable` - The Python `awaitable` to be converted
@@ -571,7 +570,7 @@ where
 /// "#;
 ///
 /// async fn py_sleep(seconds: f32) -> PyResult<()> {
-///     let test_mod = Python::with_gil(|py| -> PyResult<PyObject> {
+///     let test_mod = Python::attach(|py| -> PyResult<Py<PyAny>> {
 ///         Ok(
 ///             PyModule::from_code(
 ///                 py,
@@ -583,10 +582,10 @@ where
 ///         )
 ///     })?;
 ///
-///     Python::with_gil(|py| {
+///     Python::attach(|py| {
 ///         pyo3_async_runtimes::tokio::into_future(
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
+///                 .call_method1(py, "py_sleep", (seconds,))?
 ///                 .into_bound(py),
 ///         )
 ///     })?
@@ -596,7 +595,7 @@ where
 /// ```
 pub fn into_future(
     awaitable: Bound<PyAny>,
-) -> PyResult<impl Future<Output = PyResult<PyObject>> + Send> {
+) -> PyResult<impl Future<Output = PyResult<Py<PyAny>>> + Send> {
     generic::into_future::<TokioRuntime>(awaitable)
 }
 
@@ -628,7 +627,7 @@ pub fn into_future(
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
 /// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -643,7 +642,7 @@ pub fn into_future(
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -658,7 +657,7 @@ pub fn into_future(
 pub fn into_stream_with_locals_v1(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static> {
+) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
     generic::into_stream_with_locals_v1::<TokioRuntime>(locals, gen)
 }
 
@@ -689,7 +688,7 @@ pub fn into_stream_with_locals_v1(
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
 /// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -701,7 +700,7 @@ pub fn into_stream_with_locals_v1(
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -715,7 +714,7 @@ pub fn into_stream_with_locals_v1(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v1(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static> {
+) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
     generic::into_stream_v1::<TokioRuntime>(gen)
 }
 
@@ -747,7 +746,7 @@ pub fn into_stream_v1(
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
 /// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -762,7 +761,7 @@ pub fn into_stream_v1(
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -777,7 +776,7 @@ pub fn into_stream_v1(
 pub fn into_stream_with_locals_v2(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyObject> + 'static> {
+) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static> {
     generic::into_stream_with_locals_v2::<TokioRuntime>(locals, gen)
 }
 
@@ -808,7 +807,7 @@ pub fn into_stream_with_locals_v2(
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
 /// # #[pyo3_async_runtimes::tokio::main]
 /// # async fn main() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -820,7 +819,7 @@ pub fn into_stream_with_locals_v2(
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -834,6 +833,6 @@ pub fn into_stream_with_locals_v2(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v2(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyObject> + 'static> {
+) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static> {
     generic::into_stream_v2::<TokioRuntime>(gen)
 }

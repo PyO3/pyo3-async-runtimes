@@ -48,9 +48,9 @@ def main(rust_sleeper):
 "#;
 
 fn main() -> pyo3::PyResult<()> {
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
 
-    Python::with_gil(|py| -> PyResult<()> {
+    Python::attach(|py| -> PyResult<()> {
         let sleeper_mod = PyModule::new(py, "rust_sleeper")?;
 
         sleeper_mod.add_wrapped(wrap_pyfunction!(sleep))?;

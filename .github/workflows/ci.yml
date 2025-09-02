@@ -79,7 +79,7 @@ jobs:
           ]
         include:
           # Test minimal supported Rust version
-          - rust: 1.63.0
+          - rust: 1.74.0
             python-version: "3.13"
             platform:
               {
@@ -125,12 +125,6 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.platform.rust-target }}
-
-      - if: ${{ matrix.msrv == 'MSRV' }}
-        name: Set MSRV dependencies
-        run: |
-          cargo add tokio@=1.38.1
-          cargo update -p once_cell --precise 1.20.3
 
       - name: Build (no features)
         run: cargo build --no-default-features --verbose --target ${{ matrix.platform.rust-target }}

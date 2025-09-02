@@ -30,7 +30,7 @@ fn sleep<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny
 
 #[pyo3_async_runtimes::async_std::test]
 async fn test_future_into_py() -> PyResult<()> {
-    let fut = Python::with_gil(|py| {
+    let fut = Python::attach(|py| {
         let sleeper_mod = PyModule::new(py, "rust_sleeper")?;
 
         sleeper_mod.add_wrapped(wrap_pyfunction!(sleep))?;
@@ -54,11 +54,11 @@ async fn test_future_into_py() -> PyResult<()> {
 
 #[pyo3_async_runtimes::async_std::test]
 async fn test_async_sleep() -> PyResult<()> {
-    let asyncio = Python::with_gil(|py| py.import("asyncio").map(PyObject::from))?;
+    let asyncio = Python::attach(|py| py.import("asyncio").map(Py::<PyAny>::from))?;
 
     task::sleep(Duration::from_secs(1)).await;
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         pyo3_async_runtimes::async_std::into_future(asyncio.bind(py).call_method1("sleep", (1.0,))?)
     })?
     .await?;
@@ -73,7 +73,7 @@ fn test_blocking_sleep() -> PyResult<()> {
 
 #[pyo3_async_runtimes::async_std::test]
 async fn test_into_future() -> PyResult<()> {
-    common::test_into_future(Python::with_gil(|py| {
+    common::test_into_future(Python::attach(|py| {
         pyo3_async_runtimes::async_std::get_current_loop(py)
             .unwrap()
             .into()
@@ -83,7 +83,7 @@ async fn test_into_future() -> PyResult<()> {
 
 #[pyo3_async_runtimes::async_std::test]
 async fn test_other_awaitables() -> PyResult<()> {
-    common::test_other_awaitables(Python::with_gil(|py| {
+    common::test_other_awaitables(Python::attach(|py| {
         pyo3_async_runtimes::async_std::get_current_loop(py)
             .unwrap()
             .into()
@@ -93,7 +93,7 @@ async fn test_other_awaitables() -> PyResult<()> {
 
 #[pyo3_async_runtimes::async_std::test]
 async fn test_panic() -> PyResult<()> {
-    let fut = Python::with_gil(|py| -> PyResult<_> {
+    let fut = Python::attach(|py| -> PyResult<_> {
         pyo3_async_runtimes::async_std::into_future(
             pyo3_async_runtimes::async_std::future_into_py::<_, ()>(py, async {
                 panic!("this panic was intentional!")
@@ -103,7 +103,7 @@ async fn test_panic() -> PyResult<()> {
 
     match fut.await {
         Ok(_) => panic!("coroutine should panic"),
-        Err(e) => Python::with_gil(|py| {
+        Err(e) => Python::attach(|py| {
             if e.is_instance_of::<pyo3_async_runtimes::err::RustPanic>(py) {
                 Ok(())
             } else {
@@ -115,7 +115,7 @@ async fn test_panic() -> PyResult<()> {
 
 #[pyo3_async_runtimes::async_std::test]
 async fn test_local_future_into_py() -> PyResult<()> {
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let non_send_secs = Rc::new(1);
 
         #[allow(deprecated)]
@@ -135,7 +135,7 @@ async fn test_local_future_into_py() -> PyResult<()> {
 async fn test_cancel() -> PyResult<()> {
     let completed = Arc::new(Mutex::new(false));
 
-    let py_future = Python::with_gil(|py| -> PyResult<PyObject> {
+    let py_future = Python::attach(|py| -> PyResult<Py<PyAny>> {
         let completed = Arc::clone(&completed);
         Ok(
             pyo3_async_runtimes::async_std::future_into_py(py, async move {
@@ -148,13 +148,13 @@ async fn test_cancel() -> PyResult<()> {
         )
     })?;
 
-    if let Err(e) = Python::with_gil(|py| -> PyResult<_> {
+    if let Err(e) = Python::attach(|py| -> PyResult<_> {
         py_future.bind(py).call_method0("cancel")?;
         pyo3_async_runtimes::async_std::into_future(py_future.into_bound(py))
     })?
     .await
     {
-        Python::with_gil(|py| -> PyResult<()> {
+        Python::attach(|py| -> PyResult<()> {
             assert!(e.value(py).is_instance(
                 py.import("asyncio")?
                     .getattr("CancelledError")?
@@ -188,7 +188,7 @@ async def gen():
 #[cfg(feature = "unstable-streams")]
 #[pyo3_async_runtimes::async_std::test]
 async fn test_async_gen_v1() -> PyResult<()> {
-    let stream = Python::with_gil(|py| {
+    let stream = Python::attach(|py| {
         let test_mod = PyModule::from_code(
             py,
             &CString::new(ASYNC_STD_TEST_MOD).unwrap(),
@@ -200,7 +200,7 @@ async fn test_async_gen_v1() -> PyResult<()> {
     })?;
 
     let vals = stream
-        .map(|item| Python::with_gil(|py| -> PyResult<i32> { item?.bind(py).extract() }))
+        .map(|item| Python::attach(|py| -> PyResult<i32> { item?.bind(py).extract() }))
         .try_collect::<Vec<i32>>()
         .await?;
 
@@ -210,14 +210,14 @@ async fn test_async_gen_v1() -> PyResult<()> {
 }
 
 #[pyo3_async_runtimes::async_std::test]
-fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
-    let locals = Python::with_gil(|py| -> PyResult<TaskLocals> {
+fn test_local_cancel(event_loop: Py<PyAny>) -> PyResult<()> {
+    let locals = Python::attach(|py| -> PyResult<TaskLocals> {
         TaskLocals::new(event_loop.into_bound(py)).copy_context(py)
     })?;
     async_std::task::block_on(pyo3_async_runtimes::async_std::scope_local(locals, async {
         let completed = Arc::new(Mutex::new(false));
 
-        let py_future = Python::with_gil(|py| -> PyResult<PyObject> {
+        let py_future = Python::attach(|py| -> PyResult<Py<PyAny>> {
             let completed = Arc::clone(&completed);
             Ok(
                 pyo3_async_runtimes::async_std::future_into_py(py, async move {
@@ -230,13 +230,13 @@ fn test_local_cancel(event_loop: PyObject) -> PyResult<()> {
             )
         })?;
 
-        if let Err(e) = Python::with_gil(|py| -> PyResult<_> {
+        if let Err(e) = Python::attach(|py| -> PyResult<_> {
             py_future.bind(py).call_method0("cancel")?;
             pyo3_async_runtimes::async_std::into_future(py_future.into_bound(py))
         })?
         .await
         {
-            Python::with_gil(|py| -> PyResult<()> {
+            Python::attach(|py| -> PyResult<()> {
                 assert!(e.value(py).is_instance(
                     py.import("asyncio")?
                         .getattr("CancelledError")?
@@ -284,7 +284,7 @@ asyncio.new_event_loop().run_until_complete(main())
 
 #[pyo3_async_runtimes::async_std::test]
 fn test_multiple_asyncio_run() -> PyResult<()> {
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         pyo3_async_runtimes::async_std::run(py, async move {
             async_std::task::sleep(Duration::from_millis(500)).await;
             Ok(())
@@ -310,9 +310,9 @@ fn test_multiple_asyncio_run() -> PyResult<()> {
 fn cvars_mod(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     #![allow(deprecated)]
     #[pyfunction]
-    pub(crate) fn async_callback(py: Python, callback: PyObject) -> PyResult<Bound<PyAny>> {
+    pub(crate) fn async_callback(py: Python, callback: Py<PyAny>) -> PyResult<Bound<PyAny>> {
         pyo3_async_runtimes::async_std::future_into_py(py, async move {
-            Python::with_gil(|py| {
+            Python::attach(|py| {
                 pyo3_async_runtimes::async_std::into_future(callback.bind(py).call0()?)
             })?
             .await?;
@@ -329,7 +329,7 @@ fn cvars_mod(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 #[cfg(feature = "unstable-streams")]
 #[pyo3_async_runtimes::async_std::test]
 async fn test_async_gen_v2() -> PyResult<()> {
-    let stream = Python::with_gil(|py| {
+    let stream = Python::attach(|py| {
         let test_mod = PyModule::from_code(
             py,
             &CString::new(ASYNC_STD_TEST_MOD).unwrap(),
@@ -341,7 +341,7 @@ async fn test_async_gen_v2() -> PyResult<()> {
     })?;
 
     let vals = stream
-        .map(|item| Python::with_gil(|py| -> PyResult<i32> { item.bind(py).extract() }))
+        .map(|item| Python::attach(|py| -> PyResult<i32> { item.bind(py).extract() }))
         .try_collect::<Vec<i32>>()
         .await?;
 
@@ -365,7 +365,7 @@ asyncio.run(main())
 
 #[pyo3_async_runtimes::async_std::test]
 fn test_contextvars() -> PyResult<()> {
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let d = [
             ("asyncio", py.import("asyncio")?.into()),
             ("contextvars", py.import("contextvars")?.into()),
@@ -380,9 +380,9 @@ fn test_contextvars() -> PyResult<()> {
 }
 
 fn main() -> pyo3::PyResult<()> {
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         pyo3_async_runtimes::async_std::run(py, pyo3_async_runtimes::testing::main())
     })
 }

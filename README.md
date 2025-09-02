@@ -50,8 +50,8 @@ Here we initialize the runtime, import Python's `asyncio` library and run the gi
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.25" }
-pyo3-async-runtimes = { version = "0.25", features = ["attributes", "async-std-runtime"] }
+pyo3 = { version = "0.26" }
+pyo3-async-runtimes = { version = "0.26", features = ["attributes", "async-std-runtime"] }
 async-std = "1.13"
 ```
 
@@ -62,10 +62,10 @@ use pyo3::prelude::*;
 
 #[pyo3_async_runtimes::async_std::main]
 async fn main() -> PyResult<()> {
-    let fut = Python::with_gil(|py| {
+    let fut = Python::attach(|py| {
         let asyncio = py.import("asyncio")?;
         // convert asyncio.sleep into a Rust Future
-        pyo3_async_runtimes::async_std::into_future(asyncio.call_method1("sleep", (1.into_pyobject(py).unwrap(),))?)
+        pyo3_async_runtimes::async_std::into_future(asyncio.call_method1("sleep", (1,))?)
     })?;
 
     fut.await?;
@@ -80,8 +80,8 @@ attribute.
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.25" }
-pyo3-async-runtimes = { version = "0.25", features = ["attributes", "tokio-runtime"] }
+pyo3 = { version = "0.26" }
+pyo3-async-runtimes = { version = "0.26", features = ["attributes", "tokio-runtime"] }
 tokio = "1.40"
 ```
 
@@ -92,10 +92,10 @@ use pyo3::prelude::*;
 
 #[pyo3_async_runtimes::tokio::main]
 async fn main() -> PyResult<()> {
-    let fut = Python::with_gil(|py| {
+    let fut = Python::attach(|py| {
         let asyncio = py.import("asyncio")?;
         // convert asyncio.sleep into a Rust Future
-        pyo3_async_runtimes::tokio::into_future(asyncio.call_method1("sleep", (1.into_pyobject(py).unwrap(),))?)
+        pyo3_async_runtimes::tokio::into_future(asyncio.call_method1("sleep", (1,))?)
     })?;
 
     fut.await?;
@@ -126,8 +126,8 @@ For `async-std`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.25", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.25", features = ["async-std-runtime"] }
+pyo3 = { version = "0.26", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.26", features = ["async-std-runtime"] }
 async-std = "1.13"
 ```
 
@@ -135,8 +135,8 @@ For `tokio`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.25", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.25", features = ["tokio-runtime"] }
+pyo3 = { version = "0.26", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.26", features = ["tokio-runtime"] }
 tokio = "1.40"
 ```
 
@@ -234,7 +234,7 @@ use pyo3::prelude::*;
 
 #[pyo3_async_runtimes::tokio::main]
 async fn main() -> PyResult<()> {
-    let future = Python::with_gil(|py| -> PyResult<_> {
+    let future = Python::attach(|py| -> PyResult<_> {
         // import the module containing the py_sleep function
         let example = py.import("example")?;
 
@@ -354,12 +354,12 @@ use pyo3::prelude::*;
 async fn main() -> PyResult<()> {
     // PyO3 is initialized - Ready to go
 
-    let fut = Python::with_gil(|py| -> PyResult<_> {
+    let fut = Python::attach(|py| -> PyResult<_> {
         let asyncio = py.import("asyncio")?;
 
         // convert asyncio.sleep into a Rust Future
         pyo3_async_runtimes::async_std::into_future(
-            asyncio.call_method1("sleep", (1.into_pyobject(py).unwrap(),))?
+            asyncio.call_method1("sleep", (1,))?
         )
     })?;
 
@@ -430,8 +430,8 @@ name = "my_async_module"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.25", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.25", features = ["tokio-runtime"] }
+pyo3 = { version = "0.26", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.26", features = ["tokio-runtime"] }
 async-std = "1.13"
 tokio = "1.40"
 ```
@@ -490,8 +490,8 @@ event loop before we can install the `uvloop` policy.
 ```toml
 [dependencies]
 async-std = "1.13"
-pyo3 = "0.25"
-pyo3-async-runtimes = { version = "0.25", features = ["async-std-runtime"] }
+pyo3 = "0.26"
+pyo3-async-runtimes = { version = "0.26", features = ["async-std-runtime"] }
 ```
 
 ```rust no_run
@@ -500,18 +500,18 @@ pyo3-async-runtimes = { version = "0.25", features = ["async-std-runtime"] }
 use pyo3::{prelude::*, types::PyType};
 
 fn main() -> PyResult<()> {
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let uvloop = py.import("uvloop")?;
         uvloop.call_method0("install")?;
 
         // store a reference for the assertion
-        let uvloop = PyObject::from(uvloop);
+        let uvloop: Py<PyAny> = uvloop.into();
 
         pyo3_async_runtimes::async_std::run(py, async move {
             // verify that we are on a uvloop.Loop
-            Python::with_gil(|py| -> PyResult<()> {
+            Python::attach(|py| -> PyResult<()> {
                 assert!(uvloop
                     .bind(py)
                     .getattr("Loop")?

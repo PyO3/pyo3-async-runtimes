@@ -9,18 +9,18 @@ fn dump_err(py: Python<'_>, e: PyErr) {
 }
 
 pub(super) fn test_main() {
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let asyncio = py.import("asyncio")?;
 
         let event_loop = asyncio.call_method0("new_event_loop")?;
         asyncio.call_method1("set_event_loop", (&event_loop,))?;
 
-        let event_loop_hdl = PyObject::from(event_loop.clone());
+        let event_loop_hdl: Py<PyAny> = event_loop.clone().into();
 
         pyo3_async_runtimes::tokio::get_runtime().spawn(async move {
             tokio::time::sleep(Duration::from_secs(1)).await;
 
-            Python::with_gil(|py| {
+            Python::attach(|py| {
                 event_loop_hdl
                     .bind(py)
                     .call_method1(
@@ -40,6 +40,6 @@ pub(super) fn test_main() {
 
         Ok(())
     })
-    .map_err(|e| Python::with_gil(|py| dump_err(py, e)))
+    .map_err(|e| Python::attach(|py| dump_err(py, e)))
     .unwrap();
 }

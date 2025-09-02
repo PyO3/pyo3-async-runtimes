@@ -2,7 +2,7 @@
 fn main() -> pyo3::PyResult<()> {
     use pyo3::{prelude::*, types::PyType};
 
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
 
     let mut builder = tokio::runtime::Builder::new_current_thread();
     builder.enable_all();
@@ -12,7 +12,7 @@ fn main() -> pyo3::PyResult<()> {
         pyo3_async_runtimes::tokio::get_runtime().block_on(futures::future::pending::<()>());
     });
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         // uvloop not supported on the free-threaded build yet
         // https://github.com/MagicStack/uvloop/issues/642
         let sysconfig = py.import("sysconfig")?;
@@ -30,11 +30,11 @@ fn main() -> pyo3::PyResult<()> {
         uvloop.call_method0("install")?;
 
         // store a reference for the assertion
-        let uvloop = PyObject::from(uvloop);
+        let uvloop: Py<PyAny> = uvloop.into();
 
         pyo3_async_runtimes::tokio::run(py, async move {
             // verify that we are on a uvloop.Loop
-            Python::with_gil(|py| -> PyResult<()> {
+            Python::attach(|py| -> PyResult<()> {
                 assert!(
                     pyo3_async_runtimes::tokio::get_current_loop(py)?.is_instance(
                         uvloop

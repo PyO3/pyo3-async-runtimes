@@ -94,7 +94,7 @@ impl ContextExt for AsyncStdRuntime {
             .try_with(|c| {
                 c.borrow()
                     .as_ref()
-                    .map(|locals| Python::with_gil(|py| locals.clone_ref(py)))
+                    .map(|locals| Python::attach(|py| locals.clone_ref(py)))
             })
             .unwrap_or_default()
     }
@@ -174,9 +174,9 @@ pub fn get_current_locals(py: Python) -> PyResult<TaskLocals> {
 /// #
 /// # use pyo3::prelude::*;
 /// #
-/// # pyo3::prepare_freethreaded_python();
+/// # Python::initialize();
 /// #
-/// # Python::with_gil(|py| -> PyResult<()> {
+/// # Python::attach(|py| -> PyResult<()> {
 /// # let event_loop = py.import("asyncio")?.call_method0("new_event_loop")?;
 /// pyo3_async_runtimes::async_std::run_until_complete(event_loop, async move {
 ///     async_std::task::sleep(Duration::from_secs(1)).await;
@@ -208,9 +208,9 @@ where
 /// #
 /// fn main() {
 ///     // call this or use pyo3 0.14 "auto-initialize" feature
-///     pyo3::prepare_freethreaded_python();
+///     Python::initialize();
 ///
-///     Python::with_gil(|py| {
+///     Python::attach(|py| {
 ///         pyo3_async_runtimes::async_std::run(py, async move {
 ///             async_std::task::sleep(Duration::from_secs(1)).await;
 ///             Ok(())
@@ -268,7 +268,7 @@ where
 ///         pyo3_async_runtimes::async_std::get_current_locals(py)?,
 ///         async move {
 ///             async_std::task::sleep(Duration::from_secs(secs)).await;
-///             Python::with_gil(|py| Ok(py.None()))
+///             Python::attach(|py| Ok(py.None()))
 ///         }
 ///     )
 /// }
@@ -370,7 +370,7 @@ where
 ///         pyo3_async_runtimes::async_std::get_current_locals(py)?,
 ///         async move {
 ///             async_std::task::sleep(Duration::from_secs(*secs)).await;
-///             Python::with_gil(|py| Ok(py.None()))
+///             Python::attach(|py| Ok(py.None()))
 ///         }
 ///     )?.into())
 /// }
@@ -378,7 +378,7 @@ where
 /// # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
 /// #[pyo3_async_runtimes::async_std::main]
 /// async fn main() -> PyResult<()> {
-///     Python::with_gil(|py| {
+///     Python::attach(|py| {
 ///         let py_future = sleep_for(py, 1)?;
 ///         pyo3_async_runtimes::async_std::into_future(py_future)
 ///     })?
@@ -448,7 +448,7 @@ where
 /// # #[cfg(all(feature = "async-std-runtime", feature = "attributes"))]
 /// #[pyo3_async_runtimes::async_std::main]
 /// async fn main() -> PyResult<()> {
-///     Python::with_gil(|py| {
+///     Python::attach(|py| {
 ///         let py_future = sleep_for(py, 1)?;
 ///         pyo3_async_runtimes::async_std::into_future(py_future)
 ///     })?
@@ -476,8 +476,8 @@ where
 ///
 /// This function converts the `awaitable` into a Python Task using `run_coroutine_threadsafe`. A
 /// completion handler sends the result of this Task through a
-/// `futures::channel::oneshot::Sender<PyResult<PyObject>>` and the future returned by this function
-/// simply awaits the result through the `futures::channel::oneshot::Receiver<PyResult<PyObject>>`.
+/// `futures::channel::oneshot::Sender<PyResult<Py<PyAny>>>` and the future returned by this function
+/// simply awaits the result through the `futures::channel::oneshot::Receiver<PyResult<Py<PyAny>>>`.
 ///
 /// # Arguments
 /// * `awaitable` - The Python `awaitable` to be converted
@@ -498,7 +498,7 @@ where
 /// "#;
 ///
 /// async fn py_sleep(seconds: f32) -> PyResult<()> {
-///     let test_mod = Python::with_gil(|py| -> PyResult<PyObject> {
+///     let test_mod = Python::attach(|py| -> PyResult<Py<PyAny>> {
 ///         Ok(
 ///             PyModule::from_code(
 ///                 py,
@@ -510,10 +510,10 @@ where
 ///         )
 ///     })?;
 ///
-///     Python::with_gil(|py| {
+///     Python::attach(|py| {
 ///         pyo3_async_runtimes::async_std::into_future(
 ///             test_mod
-///                 .call_method1(py, "py_sleep", (seconds.into_pyobject(py).unwrap(),))?
+///                 .call_method1(py, "py_sleep", (seconds,))?
 ///                 .into_bound(py),
 ///         )
 ///     })?
@@ -523,7 +523,7 @@ where
 /// ```
 pub fn into_future(
     awaitable: Bound<PyAny>,
-) -> PyResult<impl Future<Output = PyResult<PyObject>> + Send> {
+) -> PyResult<impl Future<Output = PyResult<Py<PyAny>>> + Send> {
     generic::into_future::<AsyncStdRuntime>(awaitable)
 }
 
@@ -554,7 +554,7 @@ pub fn into_future(
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
 /// # #[pyo3_async_runtimes::async_std::main]
 /// # async fn main() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -566,7 +566,7 @@ pub fn into_future(
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -580,7 +580,7 @@ pub fn into_future(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v1(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static> {
+) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
     generic::into_stream_v1::<AsyncStdRuntime>(gen)
 }
 
@@ -612,7 +612,7 @@ pub fn into_stream_v1(
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
 /// # #[pyo3_async_runtimes::async_std::main]
 /// # async fn main() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -627,7 +627,7 @@ pub fn into_stream_v1(
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item?.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -642,7 +642,7 @@ pub fn into_stream_v1(
 pub fn into_stream_with_locals_v1(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<PyObject>> + 'static> {
+) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
     generic::into_stream_with_locals_v1::<AsyncStdRuntime>(locals, gen)
 }
 
@@ -674,7 +674,7 @@ pub fn into_stream_with_locals_v1(
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
 /// # #[pyo3_async_runtimes::async_std::main]
 /// # async fn main() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -689,7 +689,7 @@ pub fn into_stream_with_locals_v1(
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -704,7 +704,7 @@ pub fn into_stream_with_locals_v1(
 pub fn into_stream_with_locals_v2(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyObject> + 'static> {
+) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static> {
     generic::into_stream_with_locals_v2::<AsyncStdRuntime>(locals, gen)
 }
 
@@ -735,7 +735,7 @@ pub fn into_stream_with_locals_v2(
 /// # #[cfg(all(feature = "unstable-streams", feature = "attributes"))]
 /// # #[pyo3_async_runtimes::async_std::main]
 /// # async fn main() -> PyResult<()> {
-/// let stream = Python::with_gil(|py| {
+/// let stream = Python::attach(|py| {
 ///     let test_mod = PyModule::from_code(
 ///         py,
 ///         &CString::new(TEST_MOD).unwrap(),
@@ -747,7 +747,7 @@ pub fn into_stream_with_locals_v2(
 /// })?;
 ///
 /// let vals = stream
-///     .map(|item| Python::with_gil(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
+///     .map(|item| Python::attach(|py| -> PyResult<i32> { Ok(item.bind(py).extract()?) }))
 ///     .try_collect::<Vec<i32>>()
 ///     .await?;
 ///
@@ -761,6 +761,6 @@ pub fn into_stream_with_locals_v2(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v2(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyObject> + 'static> {
+) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static> {
     generic::into_stream_v2::<AsyncStdRuntime>(gen)
 }

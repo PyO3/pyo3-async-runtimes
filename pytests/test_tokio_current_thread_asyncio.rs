@@ -4,9 +4,9 @@ mod tokio_asyncio;
 use pyo3::prelude::*;
 
 fn main() -> pyo3::PyResult<()> {
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let mut builder = tokio::runtime::Builder::new_current_thread();
         builder.enable_all();
 

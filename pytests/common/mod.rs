@@ -14,8 +14,8 @@ async def sleep_for_1s(sleep_for):
     await sleep_for(1)
 "#;
 
-pub(super) async fn test_into_future(event_loop: PyObject) -> PyResult<()> {
-    let fut = Python::with_gil(|py| {
+pub(super) async fn test_into_future(event_loop: Py<PyAny>) -> PyResult<()> {
+    let fut = Python::attach(|py| {
         let test_mod = PyModule::from_code(
             py,
             &CString::new(TEST_MOD).unwrap(),
@@ -25,7 +25,7 @@ pub(super) async fn test_into_future(event_loop: PyObject) -> PyResult<()> {
 
         pyo3_async_runtimes::into_future_with_locals(
             &TaskLocals::new(event_loop.into_bound(py)),
-            test_mod.call_method1("py_sleep", (1.into_pyobject(py).unwrap(),))?,
+            test_mod.call_method1("py_sleep", (1,))?,
         )
     })?;
 
@@ -39,8 +39,8 @@ pub(super) fn test_blocking_sleep() -> PyResult<()> {
     Ok(())
 }
 
-pub(super) async fn test_other_awaitables(event_loop: PyObject) -> PyResult<()> {
-    let fut = Python::with_gil(|py| {
+pub(super) async fn test_other_awaitables(event_loop: Py<PyAny>) -> PyResult<()> {
+    let fut = Python::attach(|py| {
         let functools = py.import("functools")?;
         let time = py.import("time")?;
 
