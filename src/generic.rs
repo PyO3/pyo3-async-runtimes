@@ -1473,26 +1473,19 @@ where
             Err(e) => {
                 if e.is_full() {
                     let mut tx = self.tx.clone();
-                    Python::attach(move |py| {
-                        Ok(
-                            future_into_py_with_locals::<R, _, Py<PyAny>>(
-                                py,
-                                locals,
-                                async move {
-                                    if tx.flush().await.is_err() {
-                                        // receiving side disconnected
-                                        return Python::attach(|py| false.into_py_any(py));
-                                    }
-                                    if tx.send(item).await.is_err() {
-                                        // receiving side disconnected
-                                        return Python::attach(|py| false.into_py_any(py));
-                                    }
-                                    Python::attach(|py| true.into_py_any(py))
-                                },
-                            )?
-                            .into(),
-                        )
+
+                    future_into_py_with_locals::<R, _, bool>(py, locals, async move {
+                        if tx.flush().await.is_err() {
+                            // receiving side disconnected
+                            return Ok(false);
+                        }
+                        if tx.send(item).await.is_err() {
+                            // receiving side disconnected
+                            return Ok(false);
+                        }
+                        Ok(true)
                     })
+                    .map(Bound::unbind)
                 } else {
                     false.into_py_any(py)
                 }
