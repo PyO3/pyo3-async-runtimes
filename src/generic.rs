@@ -29,7 +29,6 @@ use futures::channel::oneshot;
 use futures::{channel::mpsc, SinkExt};
 use pin_project_lite::pin_project;
 use pyo3::prelude::*;
-use pyo3::sync::PyOnceLock;
 use pyo3::IntoPyObjectExt;
 #[cfg(feature = "unstable-streams")]
 use std::marker::PhantomData;
@@ -1658,6 +1657,8 @@ where
     R: Runtime + ContextExt,
 {
     use std::ffi::CString;
+
+    use pyo3::sync::PyOnceLock;
 
     static GLUE_MOD: PyOnceLock<Py<PyAny>> = PyOnceLock::new();
     let py = gen.py();
