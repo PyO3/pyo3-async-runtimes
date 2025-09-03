@@ -10,6 +10,8 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 <!-- towncrier release notes start -->
 
+- `future_into_py` no longer holds GIL in tokio event loop. [#59](https://github.com/PyO3/pyo3-async-runtimes/pull/59)
+
 ## [0.25.0] - 2025-05-14
 
 - Bump to pyo3 0.25. [#41](https://github.com/PyO3/pyo3-async-runtimes/pull/41)
