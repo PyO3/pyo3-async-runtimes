@@ -93,7 +93,7 @@
 //!     let locals = pyo3_async_runtimes::TaskLocals::with_running_loop(py)?.copy_context(py)?;
 //!
 //!     // Convert the async move { } block to a Python awaitable
-//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone_ref(py), async move {
+//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone_ref(), async move {
 //!         let py_sleep = Python::attach(|py| {
 //!             // Sometimes we need to call other async Python functions within
 //!             // this future. In order for this to work, we need to track the
@@ -162,9 +162,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone_ref(py),
+//!         locals.clone_ref(),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(py), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(), async move {
 //!             let py_sleep = Python::attach(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     // Now we can get the current locals through task-local data
@@ -189,9 +189,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone_ref(py),
+//!         locals.clone_ref(),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(py), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(), async move {
 //!             let py_sleep = Python::attach(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
