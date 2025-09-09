@@ -94,7 +94,7 @@ impl ContextExt for AsyncStdRuntime {
             .try_with(|c| {
                 c.borrow()
                     .as_ref()
-                    .map(|locals| Python::attach(|py| locals.clone_ref(py)))
+                    .map(|locals| locals.clone_ref())
             })
             .unwrap_or_default()
     }

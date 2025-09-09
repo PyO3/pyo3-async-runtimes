@@ -91,7 +91,7 @@ where
     R: ContextExt,
 {
     if let Some(locals) = R::get_task_locals() {
-        Ok(locals.event_loop.into_bound(py))
+        Ok(locals.event_loop.clone_ref(py).into_bound(py))
     } else {
         get_running_loop(py)
     }
@@ -597,11 +597,11 @@ where
     let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn(async move {
-        let locals2 = Python::attach(|py| locals.clone_ref(py));
+        let locals2 = locals.clone_ref();
 
         if let Err(e) = R::spawn(async move {
             let result = R::scope(
-                Python::attach(|py| locals2.clone_ref(py)),
+                locals2.clone_ref(),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
@@ -1002,11 +1002,11 @@ where
     let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn_local(async move {
-        let locals2 = Python::attach(|py| locals.clone_ref(py));
+        let locals2 = locals.clone_ref();
 
         if let Err(e) = R::spawn_local(async move {
             let result = R::scope_local(
-                Python::attach(|py| locals2.clone_ref(py)),
+                locals2.clone_ref(),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
@@ -1510,7 +1510,7 @@ impl SenderGlue {
             self.tx
                 .lock()
                 .unwrap()
-                .send(py, self.locals.clone_ref(py), item)
+                .send(py, self.locals.clone_ref(), item)
         })
     }
     pub fn close(&mut self) -> PyResult<()> {

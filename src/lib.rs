@@ -395,6 +395,7 @@ pub mod doc_test {
 }
 
 use std::future::Future;
+use std::sync::Arc;
 
 use futures::channel::oneshot;
 use pyo3::{call::PyCallArgs, prelude::*, sync::PyOnceLock, types::PyDict};
@@ -472,17 +473,17 @@ fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
 #[derive(Debug)]
 pub struct TaskLocals {
     /// Track the event loop of the Python task
-    event_loop: Py<PyAny>,
+    event_loop: Arc<Py<PyAny>>,
     /// Track the contextvars of the Python task
-    context: Py<PyAny>,
+    context: Arc<Py<PyAny>>,
 }
 
 impl TaskLocals {
     /// At a minimum, TaskLocals must store the event loop.
     pub fn new(event_loop: Bound<PyAny>) -> Self {
         Self {
-            context: event_loop.py().None(),
-            event_loop: event_loop.into(),
+            context: Arc::new(event_loop.py().None()),
+            event_loop: Arc::new(event_loop.into()),
         }
     }
 
@@ -494,7 +495,7 @@ impl TaskLocals {
     /// Manually provide the contextvars for the current task.
     pub fn with_context(self, context: Bound<PyAny>) -> Self {
         Self {
-            context: context.into(),
+            context: Arc::new(context.into()),
             ..self
         }
     }
@@ -516,10 +517,10 @@ impl TaskLocals {
 
     /// Create a clone of the TaskLocals by incrementing the reference counters of the event loop and
     /// contextvars.
-    pub fn clone_ref(&self, py: Python<'_>) -> Self {
+    pub fn clone_ref(&self) -> Self {
         Self {
-            event_loop: self.event_loop.clone_ref(py),
-            context: self.context.clone_ref(py),
+            event_loop: self.event_loop.clone(),
+            context: self.context.clone(),
         }
     }
 }
