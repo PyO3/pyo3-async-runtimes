@@ -111,7 +111,7 @@ impl ContextExt for TokioRuntime {
         TASK_LOCALS
             .try_with(|c| {
                 c.get()
-                    .map(|locals| locals.clone_ref())
+                    .map(|locals| locals.clone())
             })
             .unwrap_or_default()
     }

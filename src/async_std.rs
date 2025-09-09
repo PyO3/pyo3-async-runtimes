@@ -94,7 +94,7 @@ impl ContextExt for AsyncStdRuntime {
             .try_with(|c| {
                 c.borrow()
                     .as_ref()
-                    .map(|locals| locals.clone_ref())
+                    .map(|locals| locals.clone())
             })
             .unwrap_or_default()
     }

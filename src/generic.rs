@@ -597,11 +597,11 @@ where
     let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn(async move {
-        let locals2 = locals.clone_ref();
+        let locals2 = locals.clone();
 
         if let Err(e) = R::spawn(async move {
             let result = R::scope(
-                locals2.clone_ref(),
+                locals2.clone(),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
@@ -1002,11 +1002,11 @@ where
     let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn_local(async move {
-        let locals2 = locals.clone_ref();
+        let locals2 = locals.clone();
 
         if let Err(e) = R::spawn_local(async move {
             let result = R::scope_local(
-                locals2.clone_ref(),
+                locals2.clone(),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
@@ -1510,7 +1510,7 @@ impl SenderGlue {
             self.tx
                 .lock()
                 .unwrap()
-                .send(py, self.locals.clone_ref(), item)
+                .send(py, self.locals.clone(), item)
         })
     }
     pub fn close(&mut self) -> PyResult<()> {

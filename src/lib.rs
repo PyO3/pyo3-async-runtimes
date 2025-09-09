@@ -93,7 +93,7 @@
 //!     let locals = pyo3_async_runtimes::TaskLocals::with_running_loop(py)?.copy_context(py)?;
 //!
 //!     // Convert the async move { } block to a Python awaitable
-//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone_ref(), async move {
+//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone(), async move {
 //!         let py_sleep = Python::attach(|py| {
 //!             // Sometimes we need to call other async Python functions within
 //!             // this future. In order for this to work, we need to track the
@@ -162,9 +162,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone_ref(),
+//!         locals.clone(),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
 //!             let py_sleep = Python::attach(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     // Now we can get the current locals through task-local data
@@ -189,9 +189,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone_ref(),
+//!         locals.clone(),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
 //!             let py_sleep = Python::attach(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
@@ -514,10 +514,12 @@ impl TaskLocals {
     pub fn context<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
         self.context.clone_ref(py).into_bound(py)
     }
+}
 
+impl Clone for TaskLocals {
     /// Create a clone of the TaskLocals by incrementing the reference counters of the event loop and
     /// contextvars.
-    pub fn clone_ref(&self) -> Self {
+    fn clone(&self) -> Self {
         Self {
             event_loop: self.event_loop.clone(),
             context: self.context.clone(),
