@@ -514,6 +514,12 @@ impl TaskLocals {
     pub fn context<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
         self.context.clone_ref(py).into_bound(py)
     }
+
+    /// Create a clone of the TaskLocals. No longer uses the runtime, use `clone` instead.
+    #[deprecated(note = "please use `clone` instead")]
+    pub fn clone_ref(&self, _py: Python<'_>) -> Self {
+        self.clone()
+    }
 }
 
 impl Clone for TaskLocals {
