@@ -1506,12 +1506,7 @@ struct SenderGlue {
 #[pymethods]
 impl SenderGlue {
     pub fn send(&mut self, item: Py<PyAny>) -> PyResult<Py<PyAny>> {
-        Python::attach(|py| {
-            self.tx
-                .lock()
-                .unwrap()
-                .send(py, self.locals.clone(), item)
-        })
+        Python::attach(|py| self.tx.lock().unwrap().send(py, self.locals.clone(), item))
     }
     pub fn close(&mut self) -> PyResult<()> {
         self.tx.lock().unwrap().close()

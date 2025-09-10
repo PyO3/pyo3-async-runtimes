@@ -91,11 +91,7 @@ impl ContextExt for AsyncStdRuntime {
 
     fn get_task_locals() -> Option<TaskLocals> {
         TASK_LOCALS
-            .try_with(|c| {
-                c.borrow()
-                    .as_ref()
-                    .map(|locals| locals.clone())
-            })
+            .try_with(|c| c.borrow().as_ref().map(|locals| locals.clone()))
             .unwrap_or_default()
     }
 }

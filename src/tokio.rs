@@ -109,10 +109,7 @@ impl ContextExt for TokioRuntime {
 
     fn get_task_locals() -> Option<TaskLocals> {
         TASK_LOCALS
-            .try_with(|c| {
-                c.get()
-                    .map(|locals| locals.clone())
-            })
+            .try_with(|c| c.get().map(|locals| locals.clone()))
             .unwrap_or_default()
     }
 }
