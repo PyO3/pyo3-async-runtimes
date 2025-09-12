@@ -91,7 +91,7 @@ where
     R: ContextExt,
 {
     if let Some(locals) = R::get_task_locals() {
-        Ok(locals.event_loop.into_bound(py))
+        Ok(locals.0.event_loop.clone_ref(py).into_bound(py))
     } else {
         get_running_loop(py)
     }
@@ -585,7 +585,7 @@ where
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
-    let py_fut = create_future(locals.event_loop.bind(py).clone())?;
+    let py_fut = create_future(locals.0.event_loop.bind(py).clone())?;
     py_fut.call_method1(
         "add_done_callback",
         (PyDoneCallback {
@@ -597,11 +597,11 @@ where
     let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn(async move {
-        let locals2 = Python::attach(|py| locals.clone_ref(py));
+        let locals2 = locals.clone();
 
         if let Err(e) = R::spawn(async move {
             let result = R::scope(
-                Python::attach(|py| locals2.clone_ref(py)),
+                locals2.clone(),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
@@ -638,7 +638,7 @@ where
                         get_panic_message(&e.into_panic())
                     );
                     let _ = set_result(
-                        locals.event_loop.bind(py),
+                        locals.0.event_loop.bind(py),
                         future_tx2.bind(py),
                         Err(RustPanic::new_err(panic_message)),
                     )
@@ -990,7 +990,7 @@ where
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
-    let py_fut = create_future(locals.event_loop.clone_ref(py).into_bound(py))?;
+    let py_fut = create_future(locals.0.event_loop.clone_ref(py).into_bound(py))?;
     py_fut.call_method1(
         "add_done_callback",
         (PyDoneCallback {
@@ -1002,11 +1002,11 @@ where
     let future_tx2 = future_tx1.clone_ref(py);
 
     R::spawn_local(async move {
-        let locals2 = Python::attach(|py| locals.clone_ref(py));
+        let locals2 = locals.clone();
 
         if let Err(e) = R::spawn_local(async move {
             let result = R::scope_local(
-                Python::attach(|py| locals2.clone_ref(py)),
+                locals2.clone(),
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
@@ -1020,7 +1020,7 @@ where
                 }
 
                 let _ = set_result(
-                    locals2.event_loop.bind(py),
+                    locals2.0.event_loop.bind(py),
                     future_tx1.bind(py),
                     result.and_then(|val| val.into_py_any(py)),
                 )
@@ -1043,7 +1043,7 @@ where
                         get_panic_message(&e.into_panic())
                     );
                     let _ = set_result(
-                        locals.event_loop.bind(py),
+                        locals.0.event_loop.bind(py),
                         future_tx2.bind(py),
                         Err(RustPanic::new_err(panic_message)),
                     )
@@ -1506,12 +1506,7 @@ struct SenderGlue {
 #[pymethods]
 impl SenderGlue {
     pub fn send(&mut self, item: Py<PyAny>) -> PyResult<Py<PyAny>> {
-        Python::attach(|py| {
-            self.tx
-                .lock()
-                .unwrap()
-                .send(py, self.locals.clone_ref(py), item)
-        })
+        Python::attach(|py| self.tx.lock().unwrap().send(py, self.locals.clone(), item))
     }
     pub fn close(&mut self) -> PyResult<()> {
         self.tx.lock().unwrap().close()
