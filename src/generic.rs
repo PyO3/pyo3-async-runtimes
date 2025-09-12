@@ -91,7 +91,7 @@ where
     R: ContextExt,
 {
     if let Some(locals) = R::get_task_locals() {
-        Ok(locals.event_loop.clone_ref(py).into_bound(py))
+        Ok(locals.0.event_loop.clone_ref(py).into_bound(py))
     } else {
         get_running_loop(py)
     }
@@ -585,7 +585,7 @@ where
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
-    let py_fut = create_future(locals.event_loop.bind(py).clone())?;
+    let py_fut = create_future(locals.0.event_loop.bind(py).clone())?;
     py_fut.call_method1(
         "add_done_callback",
         (PyDoneCallback {
@@ -638,7 +638,7 @@ where
                         get_panic_message(&e.into_panic())
                     );
                     let _ = set_result(
-                        locals.event_loop.bind(py),
+                        locals.0.event_loop.bind(py),
                         future_tx2.bind(py),
                         Err(RustPanic::new_err(panic_message)),
                     )
@@ -990,7 +990,7 @@ where
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
-    let py_fut = create_future(locals.event_loop.clone_ref(py).into_bound(py))?;
+    let py_fut = create_future(locals.0.event_loop.clone_ref(py).into_bound(py))?;
     py_fut.call_method1(
         "add_done_callback",
         (PyDoneCallback {
@@ -1020,7 +1020,7 @@ where
                 }
 
                 let _ = set_result(
-                    locals2.event_loop.bind(py),
+                    locals2.0.event_loop.bind(py),
                     future_tx1.bind(py),
                     result.and_then(|val| val.into_py_any(py)),
                 )
@@ -1043,7 +1043,7 @@ where
                         get_panic_message(&e.into_panic())
                     );
                     let _ = set_result(
-                        locals.event_loop.bind(py),
+                        locals.0.event_loop.bind(py),
                         future_tx2.bind(py),
                         Err(RustPanic::new_err(panic_message)),
                     )

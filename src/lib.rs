@@ -469,22 +469,26 @@ fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
     contextvars(py)?.call_method0("copy_context")
 }
 
+/// Task-local inner structure.
+#[derive(Debug)]
+struct TaskLocalsInner {
+    /// Track the event loop of the Python task
+    event_loop: Py<PyAny>,
+    /// Track the contextvars of the Python task
+    context: Py<PyAny>,
+}
+
 /// Task-local data to store for Python conversions.
 #[derive(Debug)]
-pub struct TaskLocals {
-    /// Track the event loop of the Python task
-    event_loop: Arc<Py<PyAny>>,
-    /// Track the contextvars of the Python task
-    context: Arc<Py<PyAny>>,
-}
+pub struct TaskLocals(Arc<TaskLocalsInner>);
 
 impl TaskLocals {
     /// At a minimum, TaskLocals must store the event loop.
     pub fn new(event_loop: Bound<PyAny>) -> Self {
-        Self {
-            context: Arc::new(event_loop.py().None()),
-            event_loop: Arc::new(event_loop.into()),
-        }
+        Self(Arc::new(TaskLocalsInner {
+            context: event_loop.py().None(),
+            event_loop: event_loop.into(),
+        }))
     }
 
     /// Construct TaskLocals with the event loop returned by `get_running_loop`
@@ -494,10 +498,10 @@ impl TaskLocals {
 
     /// Manually provide the contextvars for the current task.
     pub fn with_context(self, context: Bound<PyAny>) -> Self {
-        Self {
-            context: Arc::new(context.into()),
-            ..self
-        }
+        Self(Arc::new(TaskLocalsInner {
+            event_loop: self.0.event_loop.clone_ref(context.py()),
+            context: context.into(),
+        }))
     }
 
     /// Capture the current task's contextvars
@@ -507,12 +511,12 @@ impl TaskLocals {
 
     /// Get a reference to the event loop
     pub fn event_loop<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.event_loop.clone_ref(py).into_bound(py)
+        self.0.event_loop.clone_ref(py).into_bound(py)
     }
 
     /// Get a reference to the python context
     pub fn context<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.context.clone_ref(py).into_bound(py)
+        self.0.context.clone_ref(py).into_bound(py)
     }
 
     /// Create a clone of the TaskLocals. No longer uses the runtime, use `clone` instead.
@@ -526,10 +530,7 @@ impl Clone for TaskLocals {
     /// Create a clone of the TaskLocals by incrementing the reference counters of the event loop and
     /// contextvars.
     fn clone(&self) -> Self {
-        Self {
-            event_loop: self.event_loop.clone(),
-            context: self.context.clone(),
-        }
+        Self(self.0.clone())
     }
 }
 
