@@ -527,8 +527,8 @@ impl TaskLocals {
 }
 
 impl Clone for TaskLocals {
-    /// Create a clone of the TaskLocals by incrementing the reference counters of the event loop and
-    /// contextvars.
+    /// Create a clone of the TaskLocals by incrementing the reference counter of the inner
+    /// structure.
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
