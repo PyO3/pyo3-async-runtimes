@@ -52,6 +52,11 @@ pub trait Runtime: Send + 'static {
     fn spawn<F>(fut: F) -> Self::JoinHandle
     where
         F: Future<Output = ()> + Send + 'static;
+
+    /// Spawn a function onto this runtime's blocking event loop
+    fn spawn_blocking<F>(f: F) -> Self::JoinHandle
+    where
+        F: FnOnce() + Send + 'static;
 }
 
 /// Extension trait for async/await runtimes that support spawning local tasks
@@ -161,6 +166,10 @@ where
 /// #     {
 /// #         unreachable!()
 /// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
+/// #         unreachable!()
+/// #     }
 /// # }
 /// #
 /// # impl ContextExt for MyCustomRuntime {
@@ -263,6 +272,10 @@ where
 /// #     where
 /// #         F: Future<Output = ()> + Send + 'static
 /// #     {
+/// #         unreachable!()
+/// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
 /// #         unreachable!()
 /// #     }
 /// # }
@@ -415,6 +428,10 @@ fn set_result(
 /// #     {
 /// #         unreachable!()
 /// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
+/// #         unreachable!()
+/// #     }
 /// # }
 /// #
 /// # impl ContextExt for MyCustomRuntime {
@@ -540,6 +557,10 @@ where
 /// #     {
 /// #         unreachable!()
 /// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
+/// #         unreachable!()
+/// #     }
 /// # }
 /// #
 /// # impl ContextExt for MyCustomRuntime {
@@ -581,7 +602,7 @@ pub fn future_into_py_with_locals<R, F, T>(
 where
     R: Runtime + ContextExt,
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py>,
+    T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
@@ -606,43 +627,49 @@ where
             )
             .await;
 
-            Python::attach(move |py| {
-                if cancelled(future_tx1.bind(py))
-                    .map_err(dump_err(py))
-                    .unwrap_or(false)
-                {
-                    return;
-                }
-
-                let _ = set_result(
-                    &locals2.event_loop(py),
-                    future_tx1.bind(py),
-                    result.and_then(|val| val.into_py_any(py)),
-                )
-                .map_err(dump_err(py));
-            });
-        })
-        .await
-        {
-            if e.is_panic() {
+            // We should not hold GIL inside async-std/tokio event loop,
+            // because a blocked task may prevent other tasks from progressing.
+            R::spawn_blocking(|| {
                 Python::attach(move |py| {
-                    if cancelled(future_tx2.bind(py))
+                    if cancelled(future_tx1.bind(py))
                         .map_err(dump_err(py))
                         .unwrap_or(false)
                     {
                         return;
                     }
 
-                    let panic_message = format!(
-                        "rust future panicked: {}",
-                        get_panic_message(&e.into_panic())
-                    );
                     let _ = set_result(
-                        locals.0.event_loop.bind(py),
-                        future_tx2.bind(py),
-                        Err(RustPanic::new_err(panic_message)),
+                        &locals2.event_loop(py),
+                        future_tx1.bind(py),
+                        result.and_then(|val| val.into_py_any(py)),
                     )
                     .map_err(dump_err(py));
+                });
+            });
+        })
+        .await
+        {
+            if e.is_panic() {
+                R::spawn_blocking(|| {
+                    Python::attach(move |py| {
+                        if cancelled(future_tx2.bind(py))
+                            .map_err(dump_err(py))
+                            .unwrap_or(false)
+                        {
+                            return;
+                        }
+
+                        let panic_message = format!(
+                            "rust future panicked: {}",
+                            get_panic_message(&e.into_panic())
+                        );
+                        let _ = set_result(
+                            locals.0.event_loop.bind(py),
+                            future_tx2.bind(py),
+                            Err(RustPanic::new_err(panic_message)),
+                        )
+                        .map_err(dump_err(py));
+                    });
                 });
             }
         }
@@ -812,6 +839,10 @@ impl PyDoneCallback {
 /// #     {
 /// #         unreachable!()
 /// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
+/// #         unreachable!()
+/// #     }
 /// # }
 /// #
 /// # impl ContextExt for MyCustomRuntime {
@@ -844,7 +875,7 @@ pub fn future_into_py<R, F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     R: Runtime + ContextExt,
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py>,
+    T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
     future_into_py_with_locals::<R, F, T>(py, get_current_locals::<R>(py)?, fut)
 }
@@ -919,6 +950,10 @@ where
 /// #     where
 /// #         F: Future<Output = ()> + Send + 'static
 /// #     {
+/// #         unreachable!()
+/// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
 /// #         unreachable!()
 /// #     }
 /// # }
@@ -1126,6 +1161,10 @@ where
 /// #     {
 /// #         unreachable!()
 /// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
+/// #         unreachable!()
+/// #     }
 /// # }
 /// #
 /// # impl ContextExt for MyCustomRuntime {
@@ -1238,6 +1277,10 @@ where
 /// #     where
 /// #         F: Future<Output = ()> + Send + 'static
 /// #     {
+/// #         unreachable!()
+/// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
 /// #         unreachable!()
 /// #     }
 /// # }
@@ -1387,6 +1430,10 @@ where
 /// #     where
 /// #         F: Future<Output = ()> + Send + 'static
 /// #     {
+/// #         unreachable!()
+/// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
 /// #         unreachable!()
 /// #     }
 /// # }
@@ -1584,6 +1631,10 @@ async def forward(gen, sender):
 /// #     {
 /// #         unreachable!()
 /// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
+/// #         unreachable!()
+/// #     }
 /// # }
 /// #
 /// # impl ContextExt for MyCustomRuntime {
@@ -1735,6 +1786,10 @@ where
 /// #     where
 /// #         F: Future<Output = ()> + Send + 'static
 /// #     {
+/// #         unreachable!()
+/// #     }
+/// #
+/// #     fn spawn_blocking<F>(f: F) -> Self::JoinHandle where F: FnOnce() + Send + 'static {
 /// #         unreachable!()
 /// #     }
 /// # }

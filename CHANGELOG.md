@@ -11,6 +11,10 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 <!-- towncrier release notes start -->
 
 - Avoid attaching to the runtime when cloning TaskLocals by using std::sync::Arc. [#62](https://github.com/PyO3/pyo3-async-runtimes/pull/62)
+- **Breaking**: Finalize the future without holding GIL inside async-std/tokio runtime.
+  Trait `Runtime` now requires `spawn_blocking` function,
+  `future_into_py` functions now require future return type to be `Send`.
+  [#60](https://github.com/PyO3/pyo3-async-runtimes/pull/60)
 
 ## [0.26.0] - 2025-09-02
 
