@@ -10,6 +10,12 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 <!-- towncrier release notes start -->
 
+- Avoid attaching to the runtime when cloning TaskLocals by using std::sync::Arc. [#62](https://github.com/PyO3/pyo3-async-runtimes/pull/62)
+
+## [0.26.0] - 2025-09-02
+
+- Bump to pyo3 0.26.  [#54](https://github.com/PyO3/pyo3-async-runtimes/pull/54)
+
 ## [0.25.0] - 2025-05-14
 
 - Bump to pyo3 0.25. [#41](https://github.com/PyO3/pyo3-async-runtimes/pull/41)

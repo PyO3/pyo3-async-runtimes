@@ -93,7 +93,7 @@
 //!     let locals = pyo3_async_runtimes::TaskLocals::with_running_loop(py)?.copy_context(py)?;
 //!
 //!     // Convert the async move { } block to a Python awaitable
-//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone_ref(py), async move {
+//!     pyo3_async_runtimes::tokio::future_into_py_with_locals(py, locals.clone(), async move {
 //!         let py_sleep = Python::attach(|py| {
 //!             // Sometimes we need to call other async Python functions within
 //!             // this future. In order for this to work, we need to track the
@@ -162,9 +162,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone_ref(py),
+//!         locals.clone(),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(py), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
 //!             let py_sleep = Python::attach(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     // Now we can get the current locals through task-local data
@@ -189,9 +189,9 @@
 //!
 //!     pyo3_async_runtimes::tokio::future_into_py_with_locals(
 //!         py,
-//!         locals.clone_ref(py),
+//!         locals.clone(),
 //!         // Store the current locals in task-local data
-//!         pyo3_async_runtimes::tokio::scope(locals.clone_ref(py), async move {
+//!         pyo3_async_runtimes::tokio::scope(locals.clone(), async move {
 //!             let py_sleep = Python::attach(|py| {
 //!                 pyo3_async_runtimes::into_future_with_locals(
 //!                     &pyo3_async_runtimes::tokio::get_current_locals(py)?,
@@ -395,6 +395,7 @@ pub mod doc_test {
 }
 
 use std::future::Future;
+use std::sync::Arc;
 
 use futures::channel::oneshot;
 use pyo3::{call::PyCallArgs, prelude::*, sync::PyOnceLock, types::PyDict};
@@ -468,22 +469,26 @@ fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
     contextvars(py)?.call_method0("copy_context")
 }
 
-/// Task-local data to store for Python conversions.
+/// Task-local inner structure.
 #[derive(Debug)]
-pub struct TaskLocals {
+struct TaskLocalsInner {
     /// Track the event loop of the Python task
     event_loop: Py<PyAny>,
     /// Track the contextvars of the Python task
     context: Py<PyAny>,
 }
 
+/// Task-local data to store for Python conversions.
+#[derive(Debug)]
+pub struct TaskLocals(Arc<TaskLocalsInner>);
+
 impl TaskLocals {
     /// At a minimum, TaskLocals must store the event loop.
     pub fn new(event_loop: Bound<PyAny>) -> Self {
-        Self {
+        Self(Arc::new(TaskLocalsInner {
             context: event_loop.py().None(),
             event_loop: event_loop.into(),
-        }
+        }))
     }
 
     /// Construct TaskLocals with the event loop returned by `get_running_loop`
@@ -493,10 +498,10 @@ impl TaskLocals {
 
     /// Manually provide the contextvars for the current task.
     pub fn with_context(self, context: Bound<PyAny>) -> Self {
-        Self {
+        Self(Arc::new(TaskLocalsInner {
+            event_loop: self.0.event_loop.clone_ref(context.py()),
             context: context.into(),
-            ..self
-        }
+        }))
     }
 
     /// Capture the current task's contextvars
@@ -506,21 +511,26 @@ impl TaskLocals {
 
     /// Get a reference to the event loop
     pub fn event_loop<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.event_loop.clone_ref(py).into_bound(py)
+        self.0.event_loop.clone_ref(py).into_bound(py)
     }
 
     /// Get a reference to the python context
     pub fn context<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
-        self.context.clone_ref(py).into_bound(py)
+        self.0.context.clone_ref(py).into_bound(py)
     }
 
-    /// Create a clone of the TaskLocals by incrementing the reference counters of the event loop and
-    /// contextvars.
-    pub fn clone_ref(&self, py: Python<'_>) -> Self {
-        Self {
-            event_loop: self.event_loop.clone_ref(py),
-            context: self.context.clone_ref(py),
-        }
+    /// Create a clone of the TaskLocals. No longer uses the runtime, use `clone` instead.
+    #[deprecated(note = "please use `clone` instead")]
+    pub fn clone_ref(&self, _py: Python<'_>) -> Self {
+        self.clone()
+    }
+}
+
+impl Clone for TaskLocals {
+    /// Create a clone of the TaskLocals by incrementing the reference counter of the inner
+    /// structure.
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 
