@@ -17,7 +17,7 @@
 use async_std::task;
 use futures::FutureExt;
 use pyo3::prelude::*;
-use std::{any::Any, cell::RefCell, future::Future, panic::AssertUnwindSafe, pin::Pin};
+use std::{any::Any, cell::RefCell, future::Future, panic, panic::AssertUnwindSafe, pin::Pin};
 
 use crate::{
     generic::{self, ContextExt, JoinError, LocalContextExt, Runtime, SpawnLocalExt},
@@ -72,6 +72,15 @@ impl Runtime for AsyncStdRuntime {
                 .catch_unwind()
                 .await
                 .map_err(AsyncStdJoinErr)
+        })
+    }
+
+    fn spawn_blocking<F>(f: F) -> Self::JoinHandle
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        task::spawn_blocking(move || {
+            panic::catch_unwind(AssertUnwindSafe(f)).map_err(|e| AsyncStdJoinErr(Box::new(e)))
         })
     }
 }
@@ -276,7 +285,7 @@ pub fn future_into_py_with_locals<F, T>(
 ) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py>,
+    T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
     generic::future_into_py_with_locals::<AsyncStdRuntime, F, T>(py, locals, fut)
 }
@@ -322,7 +331,7 @@ where
 pub fn future_into_py<F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py>,
+    T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
     generic::future_into_py::<AsyncStdRuntime, _, T>(py, fut)
 }

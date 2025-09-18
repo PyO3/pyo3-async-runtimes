@@ -94,6 +94,13 @@ impl GenericRuntime for TokioRuntime {
             fut.await;
         })
     }
+
+    fn spawn_blocking<F>(f: F) -> Self::JoinHandle
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        get_runtime().spawn_blocking(f)
+    }
 }
 
 impl ContextExt for TokioRuntime {
@@ -318,7 +325,7 @@ pub fn future_into_py_with_locals<F, T>(
 ) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py>,
+    T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
     generic::future_into_py_with_locals::<TokioRuntime, F, T>(py, locals, fut)
 }
@@ -364,7 +371,7 @@ where
 pub fn future_into_py<F, T>(py: Python, fut: F) -> PyResult<Bound<PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: for<'py> IntoPyObject<'py>,
+    T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
     generic::future_into_py::<TokioRuntime, _, T>(py, fut)
 }
