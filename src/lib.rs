@@ -408,31 +408,34 @@ static GET_RUNNING_LOOP: PyOnceLock<Py<PyAny>> = PyOnceLock::new();
 fn ensure_future<'p>(py: Python<'p>, awaitable: &Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {
     ENSURE_FUTURE
         .get_or_try_init(py, || -> PyResult<Py<PyAny>> {
-            Ok(asyncio(py)?.getattr("ensure_future")?.into())
+            Ok(asyncio(py)?
+                .getattr(pyo3::intern!(py, "ensure_future"))?
+                .into())
         })?
         .bind(py)
         .call1((awaitable,))
 }
 
 fn create_future(event_loop: Bound<'_, PyAny>) -> PyResult<Bound<'_, PyAny>> {
-    event_loop.call_method0("create_future")
+    event_loop.call_method0(pyo3::intern!(event_loop.py(), "create_future"))
 }
 
 fn close(event_loop: Bound<PyAny>) -> PyResult<()> {
+    let py = event_loop.py();
     event_loop.call_method1(
-        "run_until_complete",
-        (event_loop.call_method0("shutdown_asyncgens")?,),
+        pyo3::intern!(py, "run_until_complete"),
+        (event_loop.call_method0(pyo3::intern!(py, "shutdown_asyncgens"))?,),
     )?;
 
     // how to do this prior to 3.9?
-    if event_loop.hasattr("shutdown_default_executor")? {
+    if event_loop.hasattr(pyo3::intern!(py, "shutdown_default_executor"))? {
         event_loop.call_method1(
-            "run_until_complete",
-            (event_loop.call_method0("shutdown_default_executor")?,),
+            pyo3::intern!(py, "run_until_complete"),
+            (event_loop.call_method0(pyo3::intern!(py, "shutdown_default_executor"))?,),
         )?;
     }
 
-    event_loop.call_method0("close")?;
+    event_loop.call_method0(pyo3::intern!(py, "close"))?;
 
     Ok(())
 }
@@ -453,7 +456,9 @@ pub fn get_running_loop(py: Python) -> PyResult<Bound<PyAny>> {
         .get_or_try_init(py, || -> PyResult<Py<PyAny>> {
             let asyncio = asyncio(py)?;
 
-            Ok(asyncio.getattr("get_running_loop")?.into())
+            Ok(asyncio
+                .getattr(pyo3::intern!(py, "get_running_loop"))?
+                .into())
         })?
         .bind(py)
         .call0()
@@ -466,7 +471,7 @@ fn contextvars(py: Python<'_>) -> PyResult<&Bound<'_, PyAny>> {
 }
 
 fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
-    contextvars(py)?.call_method0("copy_context")
+    contextvars(py)?.call_method0(pyo3::intern!(py, "copy_context"))
 }
 
 /// Task-local inner structure.
@@ -543,8 +548,9 @@ struct PyTaskCompleter {
 impl PyTaskCompleter {
     #[pyo3(signature = (task))]
     pub fn __call__(&mut self, task: &Bound<PyAny>) -> PyResult<()> {
-        debug_assert!(task.call_method0("done")?.extract()?);
-        let result = match task.call_method0("result") {
+        let py = task.py();
+        debug_assert!(task.call_method0(pyo3::intern!(py, "done"))?.extract()?);
+        let result = match task.call_method0(pyo3::intern!(py, "result")) {
             Ok(val) => Ok(val.into()),
             Err(e) => Err(e),
         };
@@ -575,7 +581,7 @@ impl PyEnsureFuture {
         Python::attach(|py| {
             let task = ensure_future(py, self.awaitable.bind(py))?;
             let on_complete = PyTaskCompleter { tx: self.tx.take() };
-            task.call_method1("add_done_callback", (on_complete,))?;
+            task.call_method1(pyo3::intern!(py, "add_done_callback"), (on_complete,))?;
 
             Ok(())
         })
@@ -590,9 +596,13 @@ fn call_soon_threadsafe<'py>(
     let py = event_loop.py();
 
     let kwargs = PyDict::new(py);
-    kwargs.set_item("context", context)?;
+    kwargs.set_item(pyo3::intern!(py, "context"), context)?;
 
-    event_loop.call_method("call_soon_threadsafe", args, Some(&kwargs))?;
+    event_loop.call_method(
+        pyo3::intern!(py, "call_soon_threadsafe"),
+        args,
+        Some(&kwargs),
+    )?;
     Ok(())
 }
 
@@ -669,7 +679,7 @@ pub fn into_future_with_locals(
             Ok(item) => item,
             Err(_) => Python::attach(|py| {
                 Err(PyErr::from_value(
-                    asyncio(py)?.call_method0("CancelledError")?,
+                    asyncio(py)?.call_method0(pyo3::intern!(py, "CancelledError"))?,
                 ))
             }),
         }
