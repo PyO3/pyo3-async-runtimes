@@ -16,6 +16,7 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
   `future_into_py` functions now require future return type to be `Send`.
   [#60](https://github.com/PyO3/pyo3-async-runtimes/pull/60)
 - Change pyo3 `downcast` calls to `cast` calls [#65](https://github.com/PyO3/pyo3-async-runtimes/pull/65)
+- Use `pyo3::intern!` for method calls and `getattr` calls:wq
 
 ## [0.26.0] - 2025-09-02
 
