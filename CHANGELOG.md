@@ -15,6 +15,7 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
   Trait `Runtime` now requires `spawn_blocking` function,
   `future_into_py` functions now require future return type to be `Send`.
   [#60](https://github.com/PyO3/pyo3-async-runtimes/pull/60)
+- Use `pyo3::intern!` for method calls and `getattr` calls [#66](https://github.com/PyO3/pyo3-async-runtimes/pull/66)
 
 ## [0.26.0] - 2025-09-02
 
