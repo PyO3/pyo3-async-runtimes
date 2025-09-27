@@ -27,15 +27,8 @@ fn main() -> pyo3::PyResult<()> {
         pyo3_async_runtimes::tokio::run(py, async move {
             // verify that we are on a uvloop.Loop
             Python::attach(|py| -> PyResult<()> {
-                assert!(
-                    pyo3_async_runtimes::tokio::get_current_loop(py)?.is_instance(
-                        uvloop
-                            .bind(py)
-                            .getattr("Loop")?
-                            .downcast::<PyType>()
-                            .unwrap()
-                    )?
-                );
+                assert!(pyo3_async_runtimes::tokio::get_current_loop(py)?
+                    .is_instance(uvloop.bind(py).getattr("Loop")?.cast::<PyType>().unwrap())?);
                 Ok(())
             })?;
 

@@ -158,7 +158,7 @@ async fn test_cancel() -> PyResult<()> {
             assert!(e.value(py).is_instance(
                 py.import("asyncio")?
                     .getattr("CancelledError")?
-                    .downcast::<PyType>()
+                    .cast::<PyType>()
                     .unwrap()
             )?);
             Ok(())
@@ -240,7 +240,7 @@ fn test_local_cancel(event_loop: Py<PyAny>) -> PyResult<()> {
                 assert!(e.value(py).is_instance(
                     py.import("asyncio")?
                         .getattr("CancelledError")?
-                        .downcast::<PyType>()
+                        .cast::<PyType>()
                         .unwrap()
                 )?);
                 Ok(())
