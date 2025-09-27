@@ -515,7 +515,7 @@ fn main() -> PyResult<()> {
                 assert!(uvloop
                     .bind(py)
                     .getattr("Loop")?
-                    .downcast::<PyType>()
+                    .cast::<PyType>()
                     .unwrap()
                     .is_instance(&pyo3_async_runtimes::async_std::get_current_loop(py)?)?);
                 Ok(())
