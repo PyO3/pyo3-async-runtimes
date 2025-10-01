@@ -219,7 +219,7 @@ where
         },
     )?;
 
-    event_loop.call_method1("run_until_complete", (coro,))?;
+    event_loop.call_method1(pyo3::intern!(py, "run_until_complete"), (coro,))?;
 
     let result = result_rx.lock().unwrap().take().unwrap();
     Ok(result)
@@ -316,7 +316,7 @@ where
     F: Future<Output = PyResult<T>> + Send + 'static,
     T: Send + Sync + 'static,
 {
-    let event_loop = asyncio(py)?.call_method0("new_event_loop")?;
+    let event_loop = asyncio(py)?.call_method0(pyo3::intern!(py, "new_event_loop"))?;
 
     let result = run_until_complete::<R, F, T>(&event_loop, fut);
 
@@ -326,7 +326,10 @@ where
 }
 
 fn cancelled(future: &Bound<PyAny>) -> PyResult<bool> {
-    future.getattr("cancelled")?.call0()?.is_truthy()
+    future
+        .getattr(pyo3::intern!(future.py(), "cancelled"))?
+        .call0()?
+        .is_truthy()
 }
 
 #[pyclass]
@@ -359,8 +362,14 @@ fn set_result(
     let none = py.None().into_bound(py);
 
     let (complete, val) = match result {
-        Ok(val) => (future.getattr("set_result")?, val.into_pyobject(py)?),
-        Err(err) => (future.getattr("set_exception")?, err.into_bound_py_any(py)?),
+        Ok(val) => (
+            future.getattr(pyo3::intern!(py, "set_result"))?,
+            val.into_pyobject(py)?,
+        ),
+        Err(err) => (
+            future.getattr(pyo3::intern!(py, "set_exception"))?,
+            err.into_bound_py_any(py)?,
+        ),
     };
     call_soon_threadsafe(event_loop, &none, (CheckedCompletor, future, complete, val))?;
 
@@ -608,7 +617,7 @@ where
 
     let py_fut = create_future(locals.0.event_loop.bind(py).clone())?;
     py_fut.call_method1(
-        "add_done_callback",
+        pyo3::intern!(py, "add_done_callback"),
         (PyDoneCallback {
             cancel_tx: Some(cancel_tx),
         },),
@@ -1027,7 +1036,7 @@ where
 
     let py_fut = create_future(locals.0.event_loop.clone_ref(py).into_bound(py))?;
     py_fut.call_method1(
-        "add_done_callback",
+        pyo3::intern!(py, "add_done_callback"),
         (PyDoneCallback {
             cancel_tx: Some(cancel_tx),
         },),
@@ -1345,7 +1354,8 @@ where
     R: Runtime,
 {
     let (tx, rx) = async_channel::bounded(1);
-    let anext: Py<PyAny> = gen.getattr("__anext__")?.into();
+    let py = gen.py();
+    let anext: Py<PyAny> = gen.getattr(pyo3::intern!(py, "__anext__"))?.into();
 
     R::spawn(async move {
         loop {
@@ -1716,11 +1726,13 @@ where
     let (tx, rx) = mpsc::channel(10);
 
     locals.event_loop(py).call_method1(
-        "call_soon_threadsafe",
+        pyo3::intern!(py, "call_soon_threadsafe"),
         (
-            locals.event_loop(py).getattr("create_task")?,
+            locals
+                .event_loop(py)
+                .getattr(pyo3::intern!(py, "create_task"))?,
             glue.call_method1(
-                "forward",
+                pyo3::intern!(py, "forward"),
                 (
                     gen,
                     SenderGlue {
