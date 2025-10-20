@@ -50,8 +50,8 @@ Here we initialize the runtime, import Python's `asyncio` library and run the gi
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.26" }
-pyo3-async-runtimes = { version = "0.26", features = ["attributes", "async-std-runtime"] }
+pyo3 = { version = "0.27" }
+pyo3-async-runtimes = { version = "0.27", features = ["attributes", "async-std-runtime"] }
 async-std = "1.13"
 ```
 
@@ -80,8 +80,8 @@ attribute.
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.26" }
-pyo3-async-runtimes = { version = "0.26", features = ["attributes", "tokio-runtime"] }
+pyo3 = { version = "0.27" }
+pyo3-async-runtimes = { version = "0.27", features = ["attributes", "tokio-runtime"] }
 tokio = "1.40"
 ```
 
@@ -126,8 +126,8 @@ For `async-std`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.26", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.26", features = ["async-std-runtime"] }
+pyo3 = { version = "0.27", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.27", features = ["async-std-runtime"] }
 async-std = "1.13"
 ```
 
@@ -135,8 +135,8 @@ For `tokio`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.26", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.26", features = ["tokio-runtime"] }
+pyo3 = { version = "0.27", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.27", features = ["tokio-runtime"] }
 tokio = "1.40"
 ```
 
@@ -430,8 +430,8 @@ name = "my_async_module"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.26", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.26", features = ["tokio-runtime"] }
+pyo3 = { version = "0.27", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.27", features = ["tokio-runtime"] }
 async-std = "1.13"
 tokio = "1.40"
 ```
@@ -462,7 +462,7 @@ $ maturin develop && python3
 🔗 Found pyo3 bindings
 🐍 Found CPython 3.8 at python3
     Finished dev [unoptimized + debuginfo] target(s) in 0.04s
-Python 3.8.8 (default, Apr 13 2021, 19:58:26)
+Python 3.8.8 (default, Apr 13 2021, 19:58:27)
 [GCC 7.3.0] :: Anaconda, Inc. on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>> import asyncio
@@ -490,8 +490,8 @@ event loop before we can install the `uvloop` policy.
 ```toml
 [dependencies]
 async-std = "1.13"
-pyo3 = "0.26"
-pyo3-async-runtimes = { version = "0.26", features = ["async-std-runtime"] }
+pyo3 = "0.27"
+pyo3-async-runtimes = { version = "0.27", features = ["async-std-runtime"] }
 ```
 
 ```rust no_run
