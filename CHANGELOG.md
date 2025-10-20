@@ -10,6 +10,8 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 <!-- towncrier release notes start -->
 
+## [0.27.0] - 2025-10-20
+
 - Avoid attaching to the runtime when cloning TaskLocals by using std::sync::Arc. [#62](https://github.com/PyO3/pyo3-async-runtimes/pull/62)
 - **Breaking**: Finalize the future without holding GIL inside async-std/tokio runtime.
   Trait `Runtime` now requires `spawn_blocking` function,
@@ -17,10 +19,12 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
   [#60](https://github.com/PyO3/pyo3-async-runtimes/pull/60)
 - Change pyo3 `downcast` calls to `cast` calls [#65](https://github.com/PyO3/pyo3-async-runtimes/pull/65)
 - Use `pyo3::intern!` for method calls and `getattr` calls [#66](https://github.com/PyO3/pyo3-async-runtimes/pull/66)
+- Fix missing LICENSE file in macros crate by @musicinmybrain in https://github.com/PyO3/pyo3-async-runtimes/pull/63
+- Bump to pyo3 0.27. [#68](https://github.com/PyO3/pyo3-async-runtimes/pull/68)
 
 ## [0.26.0] - 2025-09-02
 
-- Bump to pyo3 0.26.  [#54](https://github.com/PyO3/pyo3-async-runtimes/pull/54)
+- Bump to pyo3 0.26. [#54](https://github.com/PyO3/pyo3-async-runtimes/pull/54)
 
 ## [0.25.0] - 2025-05-14
 
