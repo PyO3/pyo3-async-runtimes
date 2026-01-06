@@ -24,9 +24,11 @@ use crate::{
     asyncio, call_soon_threadsafe, close, create_future, dump_err, err::RustPanic,
     get_running_loop, into_future_with_locals, TaskLocals,
 };
-use futures::channel::oneshot;
 #[cfg(feature = "unstable-streams")]
-use futures::{channel::mpsc, SinkExt};
+use futures_channel::mpsc;
+use futures_channel::oneshot;
+#[cfg(feature = "unstable-streams")]
+use futures_util::SinkExt;
 use pin_project_lite::pin_project;
 use pyo3::prelude::*;
 use pyo3::IntoPyObjectExt;
@@ -1307,7 +1309,7 @@ where
 /// # }
 ///
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -1349,7 +1351,7 @@ where
 pub fn into_stream_with_locals_v1<R>(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static>
+) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<Py<PyAny>>> + 'static>
 where
     R: Runtime,
 {
@@ -1461,7 +1463,7 @@ where
 /// # }
 ///
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -1498,7 +1500,7 @@ where
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v1<R>(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static>
+) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<Py<PyAny>>> + 'static>
 where
     R: Runtime + ContextExt,
 {
@@ -1660,7 +1662,7 @@ async def forward(gen, sender):
 /// # }
 ///
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -1701,7 +1703,7 @@ async def forward(gen, sender):
 pub fn into_stream_with_locals_v2<R>(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static>
+) -> PyResult<impl futures_util::stream::Stream<Item = Py<PyAny>> + 'static>
 where
     R: Runtime + ContextExt,
 {
@@ -1819,7 +1821,7 @@ where
 /// # }
 ///
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -1856,7 +1858,7 @@ where
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v2<R>(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static>
+) -> PyResult<impl futures_util::stream::Stream<Item = Py<PyAny>> + 'static>
 where
     R: Runtime + ContextExt,
 {

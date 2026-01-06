@@ -15,7 +15,7 @@
 //! ```
 
 use async_std::task;
-use futures::FutureExt;
+use futures_util::future::FutureExt;
 use pyo3::prelude::*;
 use std::{any::Any, cell::RefCell, future::Future, panic, panic::AssertUnwindSafe, pin::Pin};
 
@@ -481,8 +481,8 @@ where
 ///
 /// This function converts the `awaitable` into a Python Task using `run_coroutine_threadsafe`. A
 /// completion handler sends the result of this Task through a
-/// `futures::channel::oneshot::Sender<PyResult<Py<PyAny>>>` and the future returned by this function
-/// simply awaits the result through the `futures::channel::oneshot::Receiver<PyResult<Py<PyAny>>>`.
+/// `futures_channel::oneshot::Sender<PyResult<Py<PyAny>>>` and the future returned by this function
+/// simply awaits the result through the `futures_channel::oneshot::Receiver<PyResult<Py<PyAny>>>`.
 ///
 /// # Arguments
 /// * `awaitable` - The Python `awaitable` to be converted
@@ -544,7 +544,7 @@ pub fn into_future(
 /// # Examples
 /// ```
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -585,7 +585,7 @@ pub fn into_future(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v1(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
     generic::into_stream_v1::<AsyncStdRuntime>(gen)
 }
 
@@ -602,7 +602,7 @@ pub fn into_stream_v1(
 /// # Examples
 /// ```
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -647,7 +647,7 @@ pub fn into_stream_v1(
 pub fn into_stream_with_locals_v1(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
     generic::into_stream_with_locals_v1::<AsyncStdRuntime>(locals, gen)
 }
 
@@ -664,7 +664,7 @@ pub fn into_stream_with_locals_v1(
 /// # Examples
 /// ```
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -709,7 +709,7 @@ pub fn into_stream_with_locals_v1(
 pub fn into_stream_with_locals_v2(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = Py<PyAny>> + 'static> {
     generic::into_stream_with_locals_v2::<AsyncStdRuntime>(locals, gen)
 }
 
@@ -725,7 +725,7 @@ pub fn into_stream_with_locals_v2(
 /// # Examples
 /// ```
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -766,6 +766,6 @@ pub fn into_stream_with_locals_v2(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v2(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = Py<PyAny>> + 'static> {
     generic::into_stream_v2::<AsyncStdRuntime>(gen)
 }
