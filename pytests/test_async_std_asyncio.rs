@@ -350,6 +350,38 @@ async fn test_async_gen_v2() -> PyResult<()> {
     Ok(())
 }
 
+#[cfg(feature = "unstable-streams")]
+const ASYNC_STD_TEST_MOD_FASTGEN: &str = r#"
+
+async def gen():
+    for i in range(1000):
+        yield i
+"#;
+
+#[cfg(feature = "unstable-streams")]
+#[pyo3_async_runtimes::async_std::test]
+async fn test_async_gen_full_buffer() -> PyResult<()> {
+    let stream = Python::attach(|py| {
+        let test_mod = PyModule::from_code(
+            py,
+            &CString::new(ASYNC_STD_TEST_MOD_FASTGEN).unwrap(),
+            &CString::new("test_rust_coroutine/async_std_test_mod.py").unwrap(),
+            &CString::new("async_std_test_mod").unwrap(),
+        )?;
+
+        pyo3_async_runtimes::async_std::into_stream_v2(test_mod.call_method0("gen")?)
+    })?;
+
+    let vals = stream
+        .map(|item| Python::attach(|py| -> PyResult<i32> { item.bind(py).extract() }))
+        .try_collect::<Vec<i32>>()
+        .await?;
+
+    assert_eq!((0..1000).collect::<Vec<i32>>(), vals);
+
+    Ok(())
+}
+
 const CONTEXTVARS_CODE: &str = r#"
 cx = contextvars.ContextVar("cx")
 

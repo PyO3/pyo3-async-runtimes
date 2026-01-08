@@ -1572,13 +1572,13 @@ impl SenderGlue {
 
 #[cfg(feature = "unstable-streams")]
 const STREAM_GLUE: &str = r#"
-import asyncio
+import inspect
 
 async def forward(gen, sender):
     async for item in gen:
         should_continue = sender.send(item)
 
-        if asyncio.iscoroutine(should_continue):
+        if inspect.isawaitable(should_continue):
             should_continue = await should_continue
 
         if should_continue:
