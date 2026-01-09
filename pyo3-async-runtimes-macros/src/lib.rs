@@ -246,7 +246,7 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let task = if sig.inputs.is_empty() {
             quote! {
                 Box::pin(async move {
-                    match pyo3_async_runtimes::tokio::get_runtime().spawn_blocking(move || #name()).await {
+                    match pyo3_async_runtimes::tokio::spawn_blocking(move || #name()).await {
                         Ok(result) => result,
                         Err(e) => {
                             assert!(e.is_panic());
@@ -269,7 +269,7 @@ pub fn tokio_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     pyo3_async_runtimes::tokio::get_current_loop(py).unwrap().into()
                 });
                 Box::pin(async move {
-                    match pyo3_async_runtimes::tokio::get_runtime().spawn_blocking(move || #name(event_loop)).await {
+                    match pyo3_async_runtimes::tokio::spawn_blocking(move || #name(event_loop)).await {
                         Ok(result) => result,
                         Err(e) => {
                             assert!(e.is_panic());

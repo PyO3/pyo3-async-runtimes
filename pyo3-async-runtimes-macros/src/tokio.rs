@@ -254,9 +254,12 @@ fn parse_knobs(
 
     let rt_init = match config.flavor {
         RuntimeFlavor::CurrentThread => quote! {
-            std::thread::spawn(|| pyo3_async_runtimes::tokio::get_runtime().block_on(
-                pyo3_async_runtimes::tokio::re_exports::pending::<()>()
-            ));
+            std::thread::spawn(|| {
+                #[allow(deprecated)]
+                pyo3_async_runtimes::tokio::get_runtime().block_on(
+                    pyo3_async_runtimes::tokio::re_exports::pending::<()>()
+                )
+            });
         },
         _ => quote! {},
     };
