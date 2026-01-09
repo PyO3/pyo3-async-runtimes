@@ -182,7 +182,7 @@
 use std::{future::Future, pin::Pin};
 
 use clap::{Arg, Command};
-use futures::stream::{self, StreamExt};
+use futures_util::stream::{self, StreamExt};
 use pyo3::prelude::*;
 
 /// Args that should be provided to the test program
