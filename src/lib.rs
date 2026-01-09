@@ -397,7 +397,7 @@ pub mod doc_test {
 use std::future::Future;
 use std::sync::Arc;
 
-use futures::channel::oneshot;
+use futures_channel::oneshot;
 use pyo3::{call::PyCallArgs, prelude::*, sync::PyOnceLock, types::PyDict};
 
 static ASYNCIO: PyOnceLock<Py<PyAny>> = PyOnceLock::new();

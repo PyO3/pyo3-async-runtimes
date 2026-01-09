@@ -17,7 +17,7 @@ pub(super) fn test_main() {
 
         let event_loop_hdl: Py<PyAny> = event_loop.clone().into();
 
-        pyo3_async_runtimes::tokio::get_runtime().spawn(async move {
+        pyo3_async_runtimes::tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(1)).await;
 
             Python::attach(|py| {
