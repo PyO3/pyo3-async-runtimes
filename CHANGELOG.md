@@ -14,6 +14,8 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 - Bump MSRV to 1.83.
 
+- Fix handling of full buffer in `into_stream` functions
+
 ## [0.27.0] - 2025-10-20
 
 - Avoid attaching to the runtime when cloning TaskLocals by using std::sync::Arc. [#62](https://github.com/PyO3/pyo3-async-runtimes/pull/62)
