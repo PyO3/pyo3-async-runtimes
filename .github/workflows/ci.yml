@@ -97,6 +97,12 @@ jobs:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.platform.rust-target }}
 
+      - if: ${{ matrix.msrv == 'MSRV' }}
+        name: Lock package versions for MSRV
+        run: cargo +stable update
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+
       - name: Build (no features)
         run: cargo build --no-default-features --verbose --target ${{ matrix.platform.rust-target }}
 
