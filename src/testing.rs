@@ -182,7 +182,7 @@
 use std::{future::Future, pin::Pin};
 
 use clap::{Arg, Command};
-use futures::stream::{self, StreamExt};
+use futures_util::stream::StreamExt;
 use pyo3::prelude::*;
 
 /// Args that should be provided to the test program
@@ -263,7 +263,7 @@ inventory::collect!(Test);
 
 /// Run a sequence of tests while applying any necessary filtering from the `Args`
 pub async fn test_harness(tests: Vec<Test>, args: Args) -> PyResult<()> {
-    stream::iter(tests)
+    futures_util::stream::iter(tests)
         .for_each_concurrent(Some(4), |test| {
             let mut ignore = false;
 

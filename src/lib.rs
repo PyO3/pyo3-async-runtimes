@@ -397,7 +397,7 @@ pub mod doc_test {
 use std::future::Future;
 use std::sync::Arc;
 
-use futures::channel::oneshot;
+use futures_channel::oneshot;
 use pyo3::{call::PyCallArgs, prelude::*, sync::PyOnceLock, types::PyDict};
 
 static ASYNCIO: PyOnceLock<Py<PyAny>> = PyOnceLock::new();
@@ -610,8 +610,8 @@ fn call_soon_threadsafe<'py>(
 ///
 /// This function converts the `awaitable` into a Python Task using `run_coroutine_threadsafe`. A
 /// completion handler sends the result of this Task through a
-/// `futures::channel::oneshot::Sender<PyResult<Py<PyAny>>>` and the future returned by this function
-/// simply awaits the result through the `futures::channel::oneshot::Receiver<PyResult<Py<PyAny>>>`.
+/// `futures_channel::oneshot::Sender<PyResult<Py<PyAny>>>` and the future returned by this function
+/// simply awaits the result through the `futures_channel::oneshot::Receiver<PyResult<Py<PyAny>>>`.
 ///
 /// # Arguments
 /// * `locals` - The Python event loop and context to be used for the provided awaitable

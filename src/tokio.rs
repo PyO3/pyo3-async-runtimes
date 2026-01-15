@@ -35,7 +35,7 @@ use crate::{
 #[cfg(feature = "attributes")]
 pub mod re_exports {
     /// re-export pending to be used in tokio macros without additional dependency
-    pub use futures::future::pending;
+    pub use futures_util::future::pending;
     /// re-export tokio::runtime to build runtimes in tokio macros without additional dependency
     pub use tokio::runtime;
 }
@@ -552,8 +552,8 @@ where
 ///
 /// This function converts the `awaitable` into a Python Task using `run_coroutine_threadsafe`. A
 /// completion handler sends the result of this Task through a
-/// `futures::channel::oneshot::Sender<PyResult<Py<PyAny>>>` and the future returned by this function
-/// simply awaits the result through the `futures::channel::oneshot::Receiver<PyResult<Py<PyAny>>>`.
+/// `futures_channel::oneshot::Sender<PyResult<Py<PyAny>>>` and the future returned by this function
+/// simply awaits the result through the `futures_channel::oneshot::Receiver<PyResult<Py<PyAny>>>`.
 ///
 /// # Arguments
 /// * `awaitable` - The Python `awaitable` to be converted
@@ -616,7 +616,7 @@ pub fn into_future(
 /// # Examples
 /// ```
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -661,7 +661,7 @@ pub fn into_future(
 pub fn into_stream_with_locals_v1(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
     generic::into_stream_with_locals_v1::<TokioRuntime>(locals, gen)
 }
 
@@ -677,7 +677,7 @@ pub fn into_stream_with_locals_v1(
 /// # Examples
 /// ```
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -718,7 +718,7 @@ pub fn into_stream_with_locals_v1(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v1(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
     generic::into_stream_v1::<TokioRuntime>(gen)
 }
 
@@ -735,7 +735,7 @@ pub fn into_stream_v1(
 /// # Examples
 /// ```
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -780,7 +780,7 @@ pub fn into_stream_v1(
 pub fn into_stream_with_locals_v2(
     locals: TaskLocals,
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = Py<PyAny>> + 'static> {
     generic::into_stream_with_locals_v2::<TokioRuntime>(locals, gen)
 }
 
@@ -796,7 +796,7 @@ pub fn into_stream_with_locals_v2(
 /// # Examples
 /// ```
 /// use pyo3::prelude::*;
-/// use futures::{StreamExt, TryStreamExt};
+/// use futures_util::stream::{StreamExt, TryStreamExt};
 /// use std::ffi::CString;
 ///
 /// const TEST_MOD: &str = r#"
@@ -837,6 +837,6 @@ pub fn into_stream_with_locals_v2(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v2(
     gen: Bound<'_, PyAny>,
-) -> PyResult<impl futures::Stream<Item = Py<PyAny>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = Py<PyAny>> + 'static> {
     generic::into_stream_v2::<TokioRuntime>(gen)
 }
