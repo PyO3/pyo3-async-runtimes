@@ -13,7 +13,8 @@ repository = "https://github.com/PyO3/pyo3-async-runtimes"
 documentation = "https://docs.rs/crate/pyo3-async-runtimes/"
 categories = ["api-bindings", "development-tools::ffi"]
 license = "Apache-2.0"
-edition = "2018"
+edition = { workspace = true }
+rust-version = { workspace = true }
 
 [lib]
 proc-macro = true

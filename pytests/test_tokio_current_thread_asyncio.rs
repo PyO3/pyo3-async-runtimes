@@ -12,7 +12,8 @@ fn main() -> pyo3::PyResult<()> {
 
         pyo3_async_runtimes::tokio::init(builder);
         std::thread::spawn(move || {
-            pyo3_async_runtimes::tokio::get_runtime().block_on(futures::future::pending::<()>());
+            pyo3_async_runtimes::tokio::get_runtime()
+                .block_on(futures_util::future::pending::<()>());
         });
 
         pyo3_async_runtimes::tokio::run(py, pyo3_async_runtimes::testing::main())

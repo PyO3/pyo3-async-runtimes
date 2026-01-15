@@ -10,6 +10,10 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 <!-- towncrier release notes start -->
 
+## [Unreleased]
+
+- Bump MSRV to 1.83.
+
 - Fix handling of full buffer in `into_stream` functions
 
 ## [0.27.0] - 2025-10-20
@@ -49,5 +53,10 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 Previous versions were published from [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio). Consult that library for older changes.
 
-[Unreleased]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.26.0...v0.27.0
+[0.26.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.25.0...v0.26.0
+[0.25.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.24.0...v0.25.0
+[0.24.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.23.0...v0.24.0
+[0.23.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/PyO3/pyo3-async-runtimes/tree/0.22.0

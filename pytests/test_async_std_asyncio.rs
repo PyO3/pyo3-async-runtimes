@@ -16,7 +16,7 @@ use pyo3::{
 use pyo3_async_runtimes::TaskLocals;
 
 #[cfg(feature = "unstable-streams")]
-use futures::{StreamExt, TryStreamExt};
+use futures_util::stream::{StreamExt, TryStreamExt};
 
 #[pyfunction]
 fn sleep<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny>> {

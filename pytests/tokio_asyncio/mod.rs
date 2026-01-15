@@ -13,7 +13,7 @@ use pyo3::{
 use pyo3_async_runtimes::TaskLocals;
 
 #[cfg(feature = "unstable-streams")]
-use futures::{StreamExt, TryStreamExt};
+use futures_util::{StreamExt, TryStreamExt};
 
 use crate::common;
 
