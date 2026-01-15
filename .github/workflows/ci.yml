@@ -61,69 +61,26 @@ jobs:
       fail-fast: false # If one platform fails, allow the rest to keep testing.
       matrix:
         rust: [stable]
-        python-version:
-          [
-            "3.9",
-            "3.10",
-            "3.11",
-            "3.12",
-            "3.13",
-            "3.13t",
-            "3.14-dev",
-            "3.14t-dev",
-            "pypy-3.11",
-          ]
-        platform:
-          [
-            {
-              os: "macos-latest",
-              python-architecture: "arm64",
-              rust-target: "aarch64-apple-darwin",
-            },
-            {
-              os: "ubuntu-latest",
-              python-architecture: "x64",
-              rust-target: "x86_64-unknown-linux-gnu",
-            },
-            {
-              os: "windows-latest",
-              python-architecture: "x64",
-              rust-target: "x86_64-pc-windows-msvc",
-            },
-          ]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.13t", "3.14-dev", "3.14t-dev", "pypy-3.11"]
+        platform: [{os: "macos-latest", python-architecture: "arm64", rust-target: "aarch64-apple-darwin"}, {os: "ubuntu-latest", python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu"}, {os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc"}]
         include:
           # Test minimal supported Rust version
           - rust: ${{ needs.resolve.outputs.MSRV }}
             python-version: "3.13"
-            platform:
-              {
-                os: "ubuntu-latest",
-                python-architecture: "x64",
-                rust-target: "x86_64-unknown-linux-gnu",
-              }
+            platform: {os: "ubuntu-latest", python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu"}
             msrv: "MSRV"
 
           # Test the `nightly` feature
           - rust: nightly
             python-version: "3.13"
-            platform:
-              {
-                os: "ubuntu-latest",
-                python-architecture: "x64",
-                rust-target: "x86_64-unknown-linux-gnu",
-              }
+            platform: {os: "ubuntu-latest", python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu"}
             msrv: "nightly"
             extra_features: "nightly"
 
           # Test 32-bit windows just on latest Python
           - rust: stable
             python-version: "3.13"
-            platform:
-              {
-                os: "windows-latest",
-                python-architecture: "x86",
-                rust-target: "i686-pc-windows-msvc",
-              }
+            platform: {os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc"}
 
     steps:
       - uses: actions/checkout@v4
@@ -156,13 +113,9 @@ jobs:
         run: |
           python -m pip install -U uvloop
 
-      - if: ${{ matrix.msrv != 'MSRV' && !startsWith(matrix.python-version, 'pypy') }}
+      - if: ${{ !startsWith(matrix.python-version, 'pypy') }}
         name: Test
         run: cargo test --all-features --target ${{ matrix.platform.rust-target }}
-
-      - if: ${{ matrix.msrv == 'MSRV' && !startsWith(matrix.python-version, 'pypy') }}
-        name: Test (MSRV, --no-default-features)
-        run: cargo test --no-default-features --features tokio-runtime,async-std-runtime,attributes,unstable-streams --target ${{ matrix.platform.rust-target }}
 
     env:
       RUST_BACKTRACE: 1
