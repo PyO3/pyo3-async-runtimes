@@ -92,7 +92,9 @@ async fn test_other_awaitables() -> PyResult<()> {
 
 #[pyo3_async_runtimes::tokio::test]
 fn test_local_future_into_py(event_loop: Py<PyAny>) -> PyResult<()> {
-    tokio::task::LocalSet::new().block_on(pyo3_async_runtimes::tokio::get_runtime(), async {
+    #[allow(deprecated)]
+    let rt = pyo3_async_runtimes::tokio::get_runtime();
+    tokio::task::LocalSet::new().block_on(rt, async {
         Python::attach(|py| {
             let non_send_secs = Rc::new(1);
 
@@ -182,14 +184,15 @@ async fn test_cancel() -> PyResult<()> {
 }
 
 #[pyo3_async_runtimes::tokio::test]
-#[allow(deprecated)]
 fn test_local_cancel(event_loop: Py<PyAny>) -> PyResult<()> {
     let locals = Python::attach(|py| -> PyResult<TaskLocals> {
         TaskLocals::new(event_loop.into_bound(py)).copy_context(py)
     })?;
 
+    #[allow(deprecated)]
+    let rt = pyo3_async_runtimes::tokio::get_runtime();
     tokio::task::LocalSet::new().block_on(
-        pyo3_async_runtimes::tokio::get_runtime(),
+        rt,
         pyo3_async_runtimes::tokio::scope_local(locals, async {
             let completed = Arc::new(Mutex::new(false));
             let py_future = Python::attach(|py| -> PyResult<Py<PyAny>> {
@@ -422,4 +425,49 @@ fn test_contextvars() -> PyResult<()> {
         py.run(&CString::new(CONTEXTVARS_CODE).unwrap(), Some(&d), None)?;
         Ok(())
     })
+}
+
+// Tests for the new shutdown API
+
+#[pyo3_async_runtimes::tokio::test]
+async fn test_spawn() -> PyResult<()> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+
+    pyo3_async_runtimes::tokio::spawn(async move {
+        tx.send(42).unwrap();
+    });
+
+    let result = rx.await.unwrap();
+    assert_eq!(result, 42);
+
+    Ok(())
+}
+
+#[pyo3_async_runtimes::tokio::test]
+async fn test_spawn_blocking() -> PyResult<()> {
+    let handle = pyo3_async_runtimes::tokio::spawn_blocking(|| {
+        std::thread::sleep(Duration::from_millis(10));
+        42
+    });
+
+    let result = handle.await.unwrap();
+    assert_eq!(result, 42);
+
+    Ok(())
+}
+
+#[pyo3_async_runtimes::tokio::test]
+fn test_get_handle() -> PyResult<()> {
+    let handle = pyo3_async_runtimes::tokio::get_handle();
+
+    // The handle should be able to spawn tasks
+    let (tx, rx) = std::sync::mpsc::channel();
+    handle.spawn(async move {
+        tx.send(42).unwrap();
+    });
+
+    let result = rx.recv().unwrap();
+    assert_eq!(result, 42);
+
+    Ok(())
 }

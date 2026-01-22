@@ -115,6 +115,12 @@ path = "pytests/test_race_condition_regression.rs"
 harness = false
 required-features = ["async-std-runtime", "testing"]
 
+[[test]]
+name = "test_tokio_shutdown"
+path = "pytests/test_tokio_shutdown.rs"
+harness = false
+required-features = ["tokio-runtime"]
+
 [dependencies]
 async-channel = { version = "2.3", optional = true }
 clap = { version = "4.5", optional = true }
@@ -122,11 +128,13 @@ futures-channel = "0.3"
 futures-util = "0.3"
 inventory = { version = "0.3", optional = true }
 once_cell = "1.14"
+parking_lot = "0.12"
 pin-project-lite = "0.2"
 pyo3 = "0.27"
 pyo3-async-runtimes-macros = { path = "pyo3-async-runtimes-macros", version = "=0.27.0", optional = true }
 
 [dev-dependencies]
+futures = "0.3"
 pyo3 = { version = "0.27", features = ["macros"] }
 
 [dependencies.async-std]
@@ -136,5 +144,5 @@ optional = true
 
 [dependencies.tokio]
 version = "1.13"
-features = ["rt", "rt-multi-thread", "time"]
+features = ["rt", "rt-multi-thread", "time", "sync"]
 optional = true

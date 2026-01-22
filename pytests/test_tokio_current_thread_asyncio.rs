@@ -12,6 +12,7 @@ fn main() -> pyo3::PyResult<()> {
 
         pyo3_async_runtimes::tokio::init(builder);
         std::thread::spawn(move || {
+            #[allow(deprecated)]
             pyo3_async_runtimes::tokio::get_runtime()
                 .block_on(futures_util::future::pending::<()>());
         });

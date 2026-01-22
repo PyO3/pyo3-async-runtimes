@@ -17,7 +17,18 @@
 use async_std::task;
 use futures_util::future::FutureExt;
 use pyo3::prelude::*;
-use std::{any::Any, cell::RefCell, future::Future, panic, panic::AssertUnwindSafe, pin::Pin};
+use std::{
+    any::Any,
+    cell::RefCell,
+    future::Future,
+    panic,
+    panic::AssertUnwindSafe,
+    pin::Pin,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, OnceLock,
+    },
+};
 
 use crate::{
     generic::{self, ContextExt, JoinError, LocalContextExt, Runtime, SpawnLocalExt},
@@ -41,6 +52,76 @@ pub use pyo3_async_runtimes_macros::async_std_main as main;
 /// Registers an `async-std` test with the `pyo3-asyncio` test harness
 #[cfg(all(feature = "attributes", feature = "testing"))]
 pub use pyo3_async_runtimes_macros::async_std_test as test;
+
+// ============================================================================
+// Runtime Wrapper - For API consistency with tokio module
+// ============================================================================
+//
+// Note: async-std uses a global runtime model without explicit lifecycle
+// management. Unlike tokio, there's no way to actually shut down the runtime.
+// This wrapper provides a consistent API surface and tracks shutdown requests
+// via an atomic flag, but cannot perform actual cleanup.
+
+/// Internal wrapper for async-std runtime with shutdown tracking.
+///
+/// async-std uses a global runtime, so this wrapper only provides API
+/// consistency with the tokio module. The `request_shutdown` function
+/// sets a flag but cannot actually stop the runtime.
+struct RuntimeWrapper {
+    shutdown_requested: Arc<AtomicBool>,
+}
+
+impl RuntimeWrapper {
+    fn new() -> Self {
+        Self {
+            shutdown_requested: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    #[inline]
+    fn spawn<F>(&self, fut: F) -> task::JoinHandle<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        task::spawn(fut)
+    }
+
+    #[inline]
+    fn spawn_blocking<F, T>(&self, f: F) -> task::JoinHandle<T>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        task::spawn_blocking(f)
+    }
+
+    fn shutdown(&self, _timeout_ms: u64) {
+        // async-std runtime is global and cannot be shut down.
+        // We only set the flag for API consistency.
+        self.shutdown_requested.store(true, Ordering::SeqCst);
+    }
+}
+
+impl Drop for RuntimeWrapper {
+    fn drop(&mut self) {
+        self.shutdown_requested.store(true, Ordering::SeqCst);
+    }
+}
+
+// ============================================================================
+// Static Storage
+// ============================================================================
+
+static RUNTIME_WRAPPER: OnceLock<RuntimeWrapper> = OnceLock::new();
+
+fn get_runtime_wrapper() -> &'static RuntimeWrapper {
+    RUNTIME_WRAPPER.get_or_init(RuntimeWrapper::new)
+}
+
+// ============================================================================
+// Generic Runtime Implementation
+// ============================================================================
 
 struct AsyncStdJoinErr(Box<dyn Any + Send + 'static>);
 
@@ -131,6 +212,10 @@ impl LocalContextExt for AsyncStdRuntime {
     }
 }
 
+// ============================================================================
+// Public API - Task Locals
+// ============================================================================
+
 /// Set the task local event loop for the given future
 pub async fn scope<F, R>(locals: TaskLocals, fut: F) -> R
 where
@@ -161,6 +246,10 @@ pub fn get_current_loop(py: Python) -> PyResult<Bound<PyAny>> {
 pub fn get_current_locals(py: Python) -> PyResult<TaskLocals> {
     generic::get_current_locals::<AsyncStdRuntime>(py)
 }
+
+// ============================================================================
+// Public API - Running Futures
+// ============================================================================
 
 /// Run the event loop until the given Future completes
 ///
@@ -234,6 +323,10 @@ where
 {
     generic::run::<AsyncStdRuntime, F, T>(py, fut)
 }
+
+// ============================================================================
+// Public API - Future Conversion
+// ============================================================================
 
 /// Convert a Rust Future into a Python awaitable
 ///
@@ -477,6 +570,70 @@ where
     generic::local_future_into_py::<AsyncStdRuntime, _, T>(py, fut)
 }
 
+// ============================================================================
+// Public API - Task Spawning
+// ============================================================================
+
+/// Spawn a future on the async-std runtime.
+///
+/// # Example
+///
+/// ```ignore
+/// use pyo3_async_runtimes::async_std;
+///
+/// let handle = async_std::spawn(async {
+///     // Your async code here
+/// });
+/// ```
+pub fn spawn<F>(fut: F) -> task::JoinHandle<F::Output>
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    get_runtime_wrapper().spawn(fut)
+}
+
+/// Spawn a blocking task on the async-std runtime.
+///
+/// # Example
+///
+/// ```ignore
+/// use pyo3_async_runtimes::async_std;
+///
+/// let handle = async_std::spawn_blocking(|| {
+///     // Your blocking code here
+/// });
+/// ```
+pub fn spawn_blocking<F, T>(f: F) -> task::JoinHandle<T>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    get_runtime_wrapper().spawn_blocking(f)
+}
+
+// ============================================================================
+// Public API - Shutdown
+// ============================================================================
+
+/// Request graceful shutdown of the async-std runtime.
+///
+/// **Note**: async-std uses a global runtime model without explicit lifecycle
+/// management. This function only sets an internal flag for API consistency
+/// with the tokio module. The runtime cannot actually be shut down.
+///
+/// # Arguments
+///
+/// * `timeout_ms` - Unused (for API consistency with tokio)
+///
+/// # Returns
+///
+/// Always returns `true` for API consistency.
+pub fn request_shutdown(timeout_ms: u64) -> bool {
+    get_runtime_wrapper().shutdown(timeout_ms);
+    true
+}
+
 /// Convert a Python `awaitable` into a Rust Future
 ///
 /// This function converts the `awaitable` into a Python Task using `run_coroutine_threadsafe`. A
@@ -531,6 +688,10 @@ pub fn into_future(
 ) -> PyResult<impl Future<Output = PyResult<Py<PyAny>>> + Send> {
     generic::into_future::<AsyncStdRuntime>(awaitable)
 }
+
+// ============================================================================
+// Unstable Streams API
+// ============================================================================
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>unstable-streams</code></span> Convert an async generator into a stream
 ///

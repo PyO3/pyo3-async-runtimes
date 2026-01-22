@@ -12,9 +12,24 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 ## [Unreleased]
 
-- Bump MSRV to 1.83.
+### Added
+- Add explicit shutdown API for tokio runtime via `tokio::request_shutdown()`. This enables graceful
+  shutdown of the tokio runtime with a configurable timeout for pending tasks.
+- Add `tokio::spawn()` and `tokio::spawn_blocking()` convenience functions for spawning tasks.
+- Add `tokio::get_handle()` to get a clone of the tokio runtime handle.
+- Add `async_std::spawn()`, `async_std::spawn_blocking()`, and `async_std::request_shutdown()` for
+  API consistency (note: async-std runtime cannot actually be shut down).
+- Support runtime re-initialization after shutdown, allowing the runtime to be restarted after
+  `request_shutdown()` is called.
 
+### Changed
+- Bump MSRV to 1.83.
+- Replace `futures` dependency with `futures-channel` and `futures-util` for reduced dependency tree.
 - Fix handling of full buffer in `into_stream` functions
+
+### Deprecated
+- Deprecate `tokio::get_runtime()` in favor of `tokio::get_handle()`. The returned runtime cannot be
+  gracefully shut down.
 
 ## [0.27.0] - 2025-10-20
 
