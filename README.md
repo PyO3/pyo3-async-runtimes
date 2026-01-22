@@ -22,7 +22,7 @@
 `pyo3-async-runtimes` supports the following software versions:
 
 - Python 3.9 and up (CPython and PyPy)
-- Rust 1.63 and up
+- Rust 1.83 and up
 
 ## `pyo3-async-runtimes` Primer
 

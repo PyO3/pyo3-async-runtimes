@@ -978,7 +978,7 @@ pub fn into_stream_v1(
 pub fn into_stream_with_locals_v1(
     locals: TaskLocals,
     gen: pyo3::Bound<'_, pyo3::PyAny>,
-) -> PyResult<impl futures_util::Stream<Item = PyResult<pyo3::Py<pyo3::PyAny>>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<pyo3::Py<pyo3::PyAny>>> + 'static> {
     crate::generic::into_stream_with_locals_v1::<TokioRuntime>(locals, gen)
 }
 
@@ -988,7 +988,7 @@ pub fn into_stream_with_locals_v1(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v2(
     gen: pyo3::Bound<'_, pyo3::PyAny>,
-) -> PyResult<impl futures_util::Stream<Item = pyo3::Py<pyo3::PyAny>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = pyo3::Py<pyo3::PyAny>> + 'static> {
     crate::generic::into_stream_v2::<TokioRuntime>(gen)
 }
 
@@ -999,6 +999,6 @@ pub fn into_stream_v2(
 pub fn into_stream_with_locals_v2(
     locals: TaskLocals,
     gen: pyo3::Bound<'_, pyo3::PyAny>,
-) -> PyResult<impl futures_util::Stream<Item = pyo3::Py<pyo3::PyAny>> + 'static> {
+) -> PyResult<impl futures_util::stream::Stream<Item = pyo3::Py<pyo3::PyAny>> + 'static> {
     crate::generic::into_stream_with_locals_v2::<TokioRuntime>(locals, gen)
 }

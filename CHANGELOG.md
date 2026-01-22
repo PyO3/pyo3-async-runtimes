@@ -23,7 +23,9 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
   `request_shutdown()` is called.
 
 ### Changed
+- Bump MSRV to 1.83.
 - Replace `futures` dependency with `futures-channel` and `futures-util` for reduced dependency tree.
+- Fix handling of full buffer in `into_stream` functions
 
 ### Deprecated
 - Deprecate `tokio::get_runtime()` in favor of `tokio::get_handle()`. The returned runtime cannot be
@@ -66,5 +68,10 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 Previous versions were published from [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio). Consult that library for older changes.
 
-[Unreleased]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.26.0...v0.27.0
+[0.26.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.25.0...v0.26.0
+[0.25.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.24.0...v0.25.0
+[0.24.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.23.0...v0.24.0
+[0.23.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/PyO3/pyo3-async-runtimes/tree/0.22.0

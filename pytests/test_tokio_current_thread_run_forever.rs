@@ -11,7 +11,7 @@ fn main() {
     pyo3_async_runtimes::tokio::init(builder);
     std::thread::spawn(move || {
         #[allow(deprecated)]
-        pyo3_async_runtimes::tokio::get_runtime().block_on(futures::future::pending::<()>());
+        pyo3_async_runtimes::tokio::get_runtime().block_on(futures_util::future::pending::<()>());
     });
 
     tokio_run_forever::test_main();
