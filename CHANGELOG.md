@@ -12,8 +12,11 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 ## [Unreleased]
 
-- Bump MSRV to 1.83.
+## [0.28.0] - 2026-02-03
 
+- Bump to pyo3 0.28. [#76](https://github.com/PyO3/pyo3-async-runtimes/pull/76)
+- Check for awaitable instead of coroutine in stream glue [#73](https://github.com/PyO3/pyo3-async-runtimes/pull/73)
+- Bump MSRV to 1.83.
 - Fix handling of full buffer in `into_stream` functions
 
 ## [0.27.0] - 2025-10-20
