@@ -64,6 +64,62 @@ pub fn async_std_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     result.into()
 }
 
+/// Enables an async main function that uses the async-std runtime.
+///
+/// # Examples
+///
+/// ```ignore
+/// #[pyo3_async_runtimes::smol::main]
+/// async fn main() -> PyResult<()> {
+///     Ok(())
+/// }
+/// ```
+#[cfg(not(test))] // NOTE: exporting main breaks tests, we should file an issue.
+#[proc_macro_attribute]
+pub fn smol_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = syn::parse_macro_input!(item as syn::ItemFn);
+
+    let ret = &input.sig.output;
+    let inputs = &input.sig.inputs;
+    let name = &input.sig.ident;
+    let body = &input.block;
+    let attrs = &input.attrs;
+    let vis = &input.vis;
+
+    if name != "main" {
+        return TokenStream::from(quote_spanned! { name.span() =>
+            compile_error!("only the main function can be tagged with #[async_std::main]"),
+        });
+    }
+
+    if input.sig.asyncness.is_none() {
+        return TokenStream::from(quote_spanned! { input.span() =>
+            compile_error!("the async keyword is missing from the function declaration"),
+        });
+    }
+
+    let result = quote! {
+        #vis fn main() {
+            #(#attrs)*
+            async fn main(#inputs) #ret {
+                #body
+            }
+
+            pyo3::Python::initialize();
+
+            pyo3::Python::attach(|py| {
+                pyo3_async_runtimes::smol::run(py, main())
+                    .map_err(|e| {
+                        e.print_and_set_sys_last_vars(py);
+                    })
+                    .unwrap();
+            });
+        }
+    };
+
+    result.into()
+}
+
 /// Enables an async main function that uses the tokio runtime.
 ///
 /// # Arguments
@@ -158,6 +214,103 @@ pub fn async_std_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     pyo3_async_runtimes::async_std::get_current_loop(py).unwrap().into()
                 });
                 Box::pin(pyo3_async_runtimes::async_std::re_exports::spawn_blocking(move || {
+                    #name(event_loop)
+                }))
+            }
+        };
+
+        quote! {
+            #vis fn #name() -> std::pin::Pin<Box<dyn std::future::Future<Output = pyo3::PyResult<()>> + Send>> {
+                #sig {
+                    #body
+                }
+
+                #task
+            }
+        }
+    } else {
+        quote! {
+            #vis fn #name() -> std::pin::Pin<Box<dyn std::future::Future<Output = pyo3::PyResult<()>> + Send>> {
+                #sig {
+                    #body
+                }
+
+                Box::pin(#name())
+            }
+        }
+    };
+
+    let result = quote! {
+        #fn_impl
+
+        pyo3_async_runtimes::inventory::submit! {
+            pyo3_async_runtimes::testing::Test {
+                name: concat!(std::module_path!(), "::", stringify!(#name)),
+                test_fn: &#name
+            }
+        }
+    };
+
+    result.into()
+}
+
+/// Registers an `async-std` test with the `pyo3-asyncio` test harness.
+///
+/// This attribute is meant to mirror the `#[test]` attribute and allow you to mark a function for
+/// testing within an integration test. Like the `#[smol::test]` attribute, it will accept
+/// `async` test functions, but it will also accept blocking functions as well.
+///
+/// # Examples
+/// ```ignore
+/// use std::{time::Duration, thread};
+///
+/// use pyo3::prelude::*;
+///
+/// // async test function
+/// #[pyo3_async_runtimes::smol::test]
+/// async fn test_async_sleep() -> PyResult<()> {
+///     smol::Timer::after(Duration::from_secs(1)).await;
+///     Ok(())
+/// }
+///
+/// // blocking test function
+/// #[pyo3_async_runtimes::smol::test]
+/// fn test_blocking_sleep() -> PyResult<()> {
+///     thread::sleep(Duration::from_secs(1));
+///     Ok(())
+/// }
+///
+/// // blocking test functions can optionally accept an event_loop parameter
+/// #[pyo3_async_runtimes::smol::test]
+/// fn test_blocking_sleep_with_event_loop(event_loop: Py<PyAny>) -> PyResult<()> {
+///     thread::sleep(Duration::from_secs(1));
+///     Ok(())
+/// }
+/// ```
+#[cfg(not(test))] // NOTE: exporting main breaks tests, we should file an issue.
+#[proc_macro_attribute]
+pub fn smol_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = syn::parse_macro_input!(item as syn::ItemFn);
+
+    let sig = &input.sig;
+    let name = &input.sig.ident;
+    let body = &input.block;
+    let vis = &input.vis;
+
+    let fn_impl = if input.sig.asyncness.is_none() {
+        // Optionally pass an event_loop parameter to blocking tasks
+        let task = if sig.inputs.is_empty() {
+            quote! {
+                Box::pin(pyo3_async_runtimes::smol::re_exports::spawn_blocking(move || {
+                    #name()
+                }))
+            }
+        } else {
+            quote! {
+                let event_loop = pyo3::Python::attach(|py| {
+                    pyo3_async_runtimes::smol::get_current_loop(py).unwrap().into()
+                });
+                Box::pin(pyo3_async_runtimes::smol::re_exports::spawn_blocking(move || {
                     #name(event_loop)
                 }))
             }
