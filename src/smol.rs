@@ -14,10 +14,16 @@
 //! features = ["unstable-streams"]
 //! ```
 
-use async_std::task;
 use futures_util::future::FutureExt;
 use pyo3::prelude::*;
-use std::{any::Any, cell::RefCell, future::Future, panic, panic::AssertUnwindSafe, pin::Pin};
+use std::{
+    any::Any,
+    cell::RefCell,
+    future::Future,
+    panic::{self, AssertUnwindSafe},
+    pin::Pin,
+};
+use task_local::task_local;
 
 use crate::{
     generic::{self, ContextExt, JoinError, LocalContextExt, Runtime, SpawnLocalExt},
@@ -29,22 +35,22 @@ use crate::{
 #[cfg(feature = "attributes")]
 pub mod re_exports {
     /// re-export spawn_blocking for use in `#[test]` macro without external dependency
-    pub use async_std::task::spawn_blocking;
+    pub use smol::unblock as spawn_blocking;
 }
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span> Provides the boilerplate for the `async-std` runtime and runs an async fn as main
 #[cfg(feature = "attributes")]
-pub use pyo3_async_runtimes_macros::async_std_main as main;
+pub use pyo3_async_runtimes_macros::smol_main as main;
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>attributes</code></span>
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>testing</code></span>
 /// Registers an `async-std` test with the `pyo3-asyncio` test harness
 #[cfg(all(feature = "attributes", feature = "testing"))]
-pub use pyo3_async_runtimes_macros::async_std_test as test;
+pub use pyo3_async_runtimes_macros::smol_test as test;
 
-struct AsyncStdJoinErr(Box<dyn Any + Send + 'static>);
+struct SmolJoinErr(Box<dyn Any + Send + 'static>);
 
-impl JoinError for AsyncStdJoinErr {
+impl JoinError for SmolJoinErr {
     fn is_panic(&self) -> bool {
         true
     }
@@ -53,25 +59,25 @@ impl JoinError for AsyncStdJoinErr {
     }
 }
 
-async_std::task_local! {
-    static TASK_LOCALS: RefCell<Option<TaskLocals>> = RefCell::new(None);
+task_local! {
+    static TASK_LOCALS: RefCell<Option<TaskLocals>>;
 }
 
-struct AsyncStdRuntime;
+struct SmolRuntime;
 
-impl Runtime for AsyncStdRuntime {
-    type JoinError = AsyncStdJoinErr;
-    type JoinHandle = task::JoinHandle<Result<(), AsyncStdJoinErr>>;
+impl Runtime for SmolRuntime {
+    type JoinError = SmolJoinErr;
+    type JoinHandle = smol::Task<Result<(), SmolJoinErr>>;
 
     fn spawn<F>(fut: F) -> Self::JoinHandle
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        task::spawn(async move {
+        smol::spawn(async move {
             AssertUnwindSafe(fut)
                 .catch_unwind()
                 .await
-                .map_err(AsyncStdJoinErr)
+                .map_err(SmolJoinErr)
         })
     }
 
@@ -79,13 +85,13 @@ impl Runtime for AsyncStdRuntime {
     where
         F: FnOnce() + Send + 'static,
     {
-        task::spawn_blocking(move || {
-            panic::catch_unwind(AssertUnwindSafe(f)).map_err(|e| AsyncStdJoinErr(Box::new(e)))
+        smol::unblock(move || {
+            panic::catch_unwind(AssertUnwindSafe(f)).map_err(|e| SmolJoinErr(Box::new(e)))
         })
     }
 }
 
-impl ContextExt for AsyncStdRuntime {
+impl ContextExt for SmolRuntime {
     fn scope<F, R>(locals: TaskLocals, fut: F) -> Pin<Box<dyn Future<Output = R> + Send>>
     where
         F: Future<Output = R> + Send + 'static,
@@ -105,19 +111,20 @@ impl ContextExt for AsyncStdRuntime {
     }
 }
 
-impl SpawnLocalExt for AsyncStdRuntime {
+impl SpawnLocalExt for SmolRuntime {
     fn spawn_local<F>(fut: F) -> Self::JoinHandle
     where
         F: Future<Output = ()> + 'static,
     {
-        task::spawn_local(async move {
+        let executor = async_executor::LocalExecutor::new();
+        executor.spawn(async move {
             fut.await;
             Ok(())
         })
     }
 }
 
-impl LocalContextExt for AsyncStdRuntime {
+impl LocalContextExt for SmolRuntime {
     fn scope_local<F, R>(locals: TaskLocals, fut: F) -> Pin<Box<dyn Future<Output = R>>>
     where
         F: Future<Output = R> + 'static,
@@ -136,7 +143,7 @@ pub async fn scope<F, R>(locals: TaskLocals, fut: F) -> R
 where
     F: Future<Output = R> + Send + 'static,
 {
-    AsyncStdRuntime::scope(locals, fut).await
+    SmolRuntime::scope(locals, fut).await
 }
 
 /// Set the task local event loop for the given !Send future
@@ -144,7 +151,7 @@ pub async fn scope_local<F, R>(locals: TaskLocals, fut: F) -> R
 where
     F: Future<Output = R> + 'static,
 {
-    AsyncStdRuntime::scope_local(locals, fut).await
+    SmolRuntime::scope_local(locals, fut).await
 }
 
 /// Get the current event loop from either Python or Rust async task local context
@@ -153,13 +160,13 @@ where
 /// If not, it calls [`get_running_loop`](`crate::get_running_loop`) to get the event loop
 /// associated with the current OS thread.
 pub fn get_current_loop(py: Python) -> PyResult<Bound<PyAny>> {
-    generic::get_current_loop::<AsyncStdRuntime>(py)
+    generic::get_current_loop::<SmolRuntime>(py)
 }
 
 /// Either copy the task locals from the current task OR get the current running loop and
 /// contextvars from Python.
 pub fn get_current_locals(py: Python) -> PyResult<TaskLocals> {
-    generic::get_current_locals::<AsyncStdRuntime>(py)
+    generic::get_current_locals::<SmolRuntime>(py)
 }
 
 /// Run the event loop until the given Future completes
@@ -195,7 +202,7 @@ where
     F: Future<Output = PyResult<T>> + Send + 'static,
     T: Send + Sync + 'static,
 {
-    generic::run_until_complete::<AsyncStdRuntime, _, T>(&event_loop, fut)
+    generic::run_until_complete::<SmolRuntime, _, T>(&event_loop, fut)
 }
 
 /// Run the event loop until the given Future completes
@@ -232,7 +239,7 @@ where
     F: Future<Output = PyResult<T>> + Send + 'static,
     T: Send + Sync + 'static,
 {
-    generic::run::<AsyncStdRuntime, F, T>(py, fut)
+    generic::run::<SmolRuntime, F, T>(py, fut)
 }
 
 /// Convert a Rust Future into a Python awaitable
@@ -287,7 +294,7 @@ where
     F: Future<Output = PyResult<T>> + Send + 'static,
     T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
-    generic::future_into_py_with_locals::<AsyncStdRuntime, F, T>(py, locals, fut)
+    generic::future_into_py_with_locals::<SmolRuntime, F, T>(py, locals, fut)
 }
 
 /// Convert a Rust Future into a Python awaitable
@@ -333,7 +340,7 @@ where
     F: Future<Output = PyResult<T>> + Send + 'static,
     T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
-    generic::future_into_py::<AsyncStdRuntime, _, T>(py, fut)
+    generic::future_into_py::<SmolRuntime, _, T>(py, fut)
 }
 
 /// Convert a `!Send` Rust Future into a Python awaitable
@@ -408,7 +415,7 @@ where
     F: Future<Output = PyResult<T>> + 'static,
     T: for<'py> IntoPyObject<'py>,
 {
-    generic::local_future_into_py_with_locals::<AsyncStdRuntime, _, T>(py, locals, fut)
+    generic::local_future_into_py_with_locals::<SmolRuntime, _, T>(py, locals, fut)
 }
 
 /// Convert a `!Send` Rust Future into a Python awaitable
@@ -474,7 +481,7 @@ where
     F: Future<Output = PyResult<T>> + 'static,
     T: for<'py> IntoPyObject<'py>,
 {
-    generic::local_future_into_py::<AsyncStdRuntime, _, T>(py, fut)
+    generic::local_future_into_py::<SmolRuntime, _, T>(py, fut)
 }
 
 /// Convert a Python `awaitable` into a Rust Future
@@ -529,7 +536,7 @@ where
 pub fn into_future(
     awaitable: Bound<PyAny>,
 ) -> PyResult<impl Future<Output = PyResult<Py<PyAny>>> + Send> {
-    generic::into_future::<AsyncStdRuntime>(awaitable)
+    generic::into_future::<SmolRuntime>(awaitable)
 }
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>unstable-streams</code></span> Convert an async generator into a stream

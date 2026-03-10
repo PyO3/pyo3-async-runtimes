@@ -351,11 +351,14 @@ pub use inventory;
 #[cfg(feature = "testing")]
 pub mod testing;
 
-#[cfg(feature = "async-std")]
+#[cfg(feature = "async-std-runtime")]
 pub mod async_std;
 
 #[cfg(feature = "tokio-runtime")]
 pub mod tokio;
+
+#[cfg(feature = "smol-runtime")]
+pub mod smol;
 
 /// Errors and exceptions related to PyO3 Asyncio
 pub mod err;
@@ -389,6 +392,7 @@ pub mod doc_test {
     #[cfg(all(
         feature = "async-std-runtime",
         feature = "tokio-runtime",
+        feature = "smol-runtime",
         feature = "attributes"
     ))]
     doctest!("../README.md", readme_md);
