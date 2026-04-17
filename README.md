@@ -7,7 +7,7 @@
 
 ***Forked from [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21+.***
 
-[Rust](http://www.rust-lang.org/) bindings for [Python](https://www.python.org/)'s [Asyncio Library](https://docs.python.org/3/library/asyncio.html). This crate facilitates interactions between Rust Futures and Python Coroutines and manages the lifecycle of their corresponding event loops.
+[Rust](http://www.rust-lang.org/) bindings for [Python](https://www.python.org/)'s [Asyncio Library](https://docs.python.org/3/library/asyncio.html) and [trio](https://trio.readthedocs.io/). This crate facilitates interactions between Rust Futures and Python Coroutines and manages the lifecycle of their corresponding event loops.
 
 - PyO3 Project: [Homepage](https://pyo3.rs/) | [GitHub](https://github.com/PyO3/pyo3)
 
@@ -30,9 +30,10 @@ If you are working with a Python library that makes use of async functions or wi
 Python bindings for an async Rust library, [`pyo3-async-runtimes`](https://github.com/PyO3/pyo3-async-runtimes)
 likely has the tools you need. It provides conversions between async functions in both Python and
 Rust and was designed with first-class support for popular Rust runtimes such as
-[`tokio`](https://tokio.rs/) and [`async-std`](https://async.rs/). In addition, all async Python
-code runs on the default `asyncio` event loop, so `pyo3-async-runtimes` should work just fine with existing
-Python libraries.
+[`tokio`](https://tokio.rs/) and [`async-std`](https://async.rs/). By default, async Python
+code runs on the `asyncio` event loop, so `pyo3-async-runtimes` should work just fine with existing
+Python libraries. The same conversions also work transparently under [`trio`](https://trio.readthedocs.io)
+— the running Python async library is detected at call time via `sniffio`, with no extra feature flags.
 
 In the following sections, we'll give a general overview of `pyo3-async-runtimes` explaining how to call
 async Python functions with PyO3, how to call async Rust functions from Python, and how to configure
@@ -528,6 +529,61 @@ fn main() -> PyResult<()> {
     })
 }
 ```
+
+#### Using `trio`
+
+Unlike `uvloop`, [`trio`](https://trio.readthedocs.io) is not a drop-in
+`asyncio` event loop — it is a separate async library with its own
+scheduler and primitives. `pyo3-async-runtimes` detects the running
+Python async library at call time (via
+[`sniffio`](https://sniffio.readthedocs.io)) and uses the appropriate
+park/wake primitives, so the same compiled extension works under both
+`asyncio` and `trio` with no Python-side shim and no extra Cargo
+features:
+
+```rust
+//! lib.rs
+
+use pyo3::{prelude::*, wrap_pyfunction};
+
+#[pyfunction]
+fn rust_sleep(py: Python) -> PyResult<Bound<PyAny>> {
+    pyo3_async_runtimes::tokio::future_into_py(py, async {
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        Ok(())
+    })
+}
+
+#[pymodule]
+fn my_async_module(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(rust_sleep, m)?)?;
+    Ok(())
+}
+```
+
+```python
+import trio
+from my_async_module import rust_sleep
+
+async def main():
+    await rust_sleep()
+
+trio.run(main)
+```
+
+The same `rust_sleep` can be awaited unchanged from `asyncio.run(main())`.
+Under `asyncio` the existing code path is taken and an `asyncio.Future`
+is returned exactly as before, so existing users see no behavior change.
+
+`into_future`, `future_into_py`, and `into_stream_v2` all dispatch this
+way. `local_future_into_py` (the `!Send` variant) and the
+`run`/`run_until_complete` helpers remain asyncio-only —
+`local_future_into_py` returns `NotImplementedError` under trio because
+`spawn_local` requires a `LocalSet` that cannot share a thread with
+`trio.run`, and `run_until_complete` is inherently tied to asyncio's
+loop-creation API.
+
+Requires `trio >= 0.23`.
 
 ### Additional Information
 

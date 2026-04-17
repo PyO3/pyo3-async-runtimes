@@ -109,6 +109,17 @@ jobs:
       - name: Build
         run: cargo build --features=${{env.features}} --verbose --target ${{ matrix.platform.rust-target }}
 
+      # trio on Windows depends on cffi, which doesn't support
+      # free-threaded CPython 3.13 (only 3.14t+). PyPy is excluded
+      # because tests are skipped on PyPy anyway.
+      # trio>=0.23 for spawn_system_task(context=...).
+      - if: ${{ !startsWith(matrix.python-version, 'pypy') && !(matrix.platform.os == 'windows-latest' && matrix.python-version == '3.13t') }}
+        name: Install trio and sniffio
+        run: python -m pip install -U 'trio>=0.23' sniffio
+      - if: ${{ matrix.platform.os == 'windows-latest' && matrix.python-version == '3.13t' }}
+        name: Skip trio (cffi unsupported on free-threaded 3.13)
+        run: echo "PYO3_ASYNC_TEST_TRIO_OPTIONAL=1" >> $env:GITHUB_ENV
+
       # uvloop doesn't compile under
       # Windows, https://github.com/MagicStack/uvloop/issues/536,
       # nor PyPy, https://github.com/MagicStack/uvloop/issues/537
@@ -136,7 +147,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Install pyo3-asyncio test dependencies
-        run: python -m pip install -U uvloop
+        run: python -m pip install -U uvloop 'trio>=0.23' sniffio
 
       - run: cargo llvm-cov --all-features --codecov --output-path coverage.json
       - uses: codecov/codecov-action@v5

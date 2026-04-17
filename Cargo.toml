@@ -114,6 +114,18 @@ required-features = ["tokio-runtime", "testing"]
 
 
 [[test]]
+name = "test_trio"
+path = "pytests/test_trio.rs"
+harness = false
+required-features = ["tokio-runtime"]
+
+[[test]]
+name = "test_async_std_trio"
+path = "pytests/test_async_std_trio.rs"
+harness = false
+required-features = ["async-std-runtime"]
+
+[[test]]
 name = "test_race_condition_regression"
 path = "pytests/test_race_condition_regression.rs"
 harness = false

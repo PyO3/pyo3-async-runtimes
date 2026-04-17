@@ -50,3 +50,13 @@ Using the project's githooks are recommended to prevent CI from failing for triv
 ```
 git config core.hookspath .githooks
 ```
+
+## Running the trio tests
+
+The trio integration tests need the `trio` and `sniffio` Python packages installed
+(`pip install trio sniffio`). Add `unstable-streams` for the stream-conversion tests:
+
+```
+cargo test --features tokio-runtime --test test_trio
+cargo test --features 'tokio-runtime unstable-streams' --test test_trio
+```

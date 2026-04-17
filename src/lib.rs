@@ -10,6 +10,14 @@
 //! the event loops for both languages. Python's threading model and GIL can make this interop a bit
 //! trickier than one might expect, so there are a few caveats that users should be aware of.
 //!
+//! ## Beyond Asyncio
+//!
+//! The conversions in this crate also work under `trio`. [`TaskLocals::current`] detects the
+//! running Python async library via `sniffio`, and [`into_future_with_locals`] /
+//! [`generic::future_into_py_with_locals`] dispatch on [`TaskLocals::kind`] — so the same
+//! `#[pyfunction]` can be awaited from `asyncio.run` or `trio.run` with no code changes.
+//! The asyncio code paths are unchanged when running under asyncio.
+//!
 //! ## Why Two Event Loops
 //!
 //! Currently, we don't have a way to run Rust futures directly on Python's event loop. Likewise,
@@ -137,9 +145,9 @@
 //! Python event loop and contextvars associated with the current Rust _task_.
 //!
 //! Enter `pyo3_async_runtimes::<runtime>::get_current_locals`. This function first checks task-local data
-//! for the `TaskLocals`, then falls back on `asyncio.get_running_loop` and
-//! `contextvars.copy_context` if no task locals are found. This way both bases are
-//! covered.
+//! for the `TaskLocals`, then falls back on detecting the running Python async library via `sniffio`
+//! (`asyncio.get_running_loop` or `trio.lowlevel.current_trio_token`) plus `contextvars.copy_context`
+//! if no task locals are found. This way both bases are covered.
 //!
 //! Now, all we need is a way to store the `TaskLocals` for the Rust future. Since this is a
 //! runtime-specific feature, you can find the following functions in each runtime module:
@@ -362,6 +370,8 @@ pub mod err;
 
 pub mod generic;
 
+mod trio;
+
 #[pymodule]
 fn pyo3_async_runtimes(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add("RustPanic", py.get_type::<err::RustPanic>())?;
@@ -470,13 +480,24 @@ fn contextvars(py: Python<'_>) -> PyResult<&Bound<'_, PyAny>> {
         .bind(py))
 }
 
-fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
+pub(crate) fn copy_context(py: Python) -> PyResult<Bound<PyAny>> {
     contextvars(py)?.call_method0(pyo3::intern!(py, "copy_context"))
+}
+
+/// Which Python async library a [`TaskLocals`] was captured under.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RuntimeKind {
+    /// Python's built-in `asyncio`.
+    Asyncio,
+    /// The `trio` structured-concurrency library.
+    Trio,
 }
 
 /// Task-local inner structure.
 #[derive(Debug)]
 struct TaskLocalsInner {
+    kind: RuntimeKind,
     /// Track the event loop of the Python task
     event_loop: Py<PyAny>,
     /// Track the contextvars of the Python task
@@ -491,8 +512,18 @@ impl TaskLocals {
     /// At a minimum, TaskLocals must store the event loop.
     pub fn new(event_loop: Bound<PyAny>) -> Self {
         Self(Arc::new(TaskLocalsInner {
+            kind: RuntimeKind::Asyncio,
             context: event_loop.py().None(),
             event_loop: event_loop.into(),
+        }))
+    }
+
+    /// Construct TaskLocals for trio with the given `trio.lowlevel.TrioToken`.
+    pub fn trio(token: Bound<PyAny>) -> Self {
+        Self(Arc::new(TaskLocalsInner {
+            kind: RuntimeKind::Trio,
+            context: token.py().None(),
+            event_loop: token.into(),
         }))
     }
 
@@ -501,9 +532,25 @@ impl TaskLocals {
         Ok(Self::new(get_running_loop(py)?))
     }
 
+    /// Detect the current Python async library via `sniffio` and capture its
+    /// loop or token. Falls back to [`with_running_loop`](Self::with_running_loop)
+    /// if `sniffio` is not installed.
+    pub fn current(py: Python) -> PyResult<Self> {
+        match crate::trio::sniff(py).as_deref() {
+            Some("trio") => Ok(Self::trio(
+                crate::trio::current_trio_token(py)?.into_bound(py),
+            )),
+            Some("asyncio") | None => Self::with_running_loop(py),
+            Some(other) => Err(pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "unsupported Python async library: {other}"
+            ))),
+        }
+    }
+
     /// Manually provide the contextvars for the current task.
     pub fn with_context(self, context: Bound<PyAny>) -> Self {
         Self(Arc::new(TaskLocalsInner {
+            kind: self.0.kind,
             event_loop: self.0.event_loop.clone_ref(context.py()),
             context: context.into(),
         }))
@@ -514,9 +561,25 @@ impl TaskLocals {
         Ok(self.with_context(copy_context(py)?))
     }
 
-    /// Get a reference to the event loop
+    /// Which Python async library these locals were captured under.
+    pub fn kind(&self) -> RuntimeKind {
+        self.0.kind
+    }
+
+    /// Get a reference to the event loop.
+    ///
+    /// Under [`RuntimeKind::Trio`] this returns the captured
+    /// `trio.lowlevel.TrioToken` rather than an asyncio event loop; prefer
+    /// [`token`](Self::token) when writing runtime-neutral code.
     pub fn event_loop<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
         self.0.event_loop.clone_ref(py).into_bound(py)
+    }
+
+    /// Get the captured loop handle — the asyncio event loop under
+    /// [`RuntimeKind::Asyncio`] or the `trio.lowlevel.TrioToken` under
+    /// [`RuntimeKind::Trio`]. Runtime-neutral alias for [`event_loop`](Self::event_loop).
+    pub fn token<'p>(&self, py: Python<'p>) -> Bound<'p, PyAny> {
+        self.event_loop(py)
     }
 
     /// Get a reference to the python context
@@ -665,23 +728,42 @@ pub fn into_future_with_locals(
     let py = awaitable.py();
     let (tx, rx) = oneshot::channel();
 
-    call_soon_threadsafe(
-        &locals.event_loop(py),
-        &locals.context(py),
-        (PyEnsureFuture {
-            awaitable: awaitable.into(),
-            tx: Some(tx),
-        },),
-    )?;
+    match locals.kind() {
+        RuntimeKind::Asyncio => {
+            call_soon_threadsafe(
+                &locals.event_loop(py),
+                &locals.context(py),
+                (PyEnsureFuture {
+                    awaitable: awaitable.into(),
+                    tx: Some(tx),
+                },),
+            )?;
+        }
+        RuntimeKind::Trio => {
+            crate::trio::schedule_awaitable(
+                py,
+                &locals.event_loop(py),
+                &locals.context(py),
+                awaitable,
+                tx,
+            )?;
+        }
+    }
 
+    let kind = locals.kind();
     Ok(async move {
         match rx.await {
             Ok(item) => item,
-            Err(_) => Python::attach(|py| {
-                Err(PyErr::from_value(
-                    asyncio(py)?.call_method0(pyo3::intern!(py, "CancelledError"))?,
-                ))
-            }),
+            Err(_) => match kind {
+                RuntimeKind::Asyncio => Python::attach(|py| {
+                    Err(PyErr::from_value(
+                        asyncio(py)?.call_method0(pyo3::intern!(py, "CancelledError"))?,
+                    ))
+                }),
+                RuntimeKind::Trio => Err(pyo3::exceptions::PyRuntimeError::new_err(
+                    "Python awaitable runner dropped before completion",
+                )),
+            },
         }
     })
 }

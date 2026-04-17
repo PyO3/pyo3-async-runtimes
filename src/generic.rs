@@ -88,20 +88,32 @@ pub trait LocalContextExt: Runtime {
         F: Future<Output = R> + 'static;
 }
 
-/// Get the current event loop from either Python or Rust async task local context
+/// Get the current asyncio event loop from either Python or Rust async task local context
 ///
 /// This function first checks if the runtime has a task-local reference to the Python event loop.
-/// If not, it calls [`get_running_loop`](crate::get_running_loop`) to get the event loop associated
-/// with the current OS thread.
+/// If not, it falls back to [`TaskLocals::current`](crate::TaskLocals::current) (which detects the
+/// running async library via `sniffio`). Under `trio` this returns a `RuntimeError` since there is
+/// no asyncio event loop; use [`get_current_locals`] and inspect [`TaskLocals::kind`] instead.
 pub fn get_current_loop<R>(py: Python) -> PyResult<Bound<PyAny>>
 where
     R: ContextExt,
 {
     if let Some(locals) = R::get_task_locals() {
-        Ok(locals.0.event_loop.clone_ref(py).into_bound(py))
-    } else {
-        get_running_loop(py)
+        return match locals.kind() {
+            crate::RuntimeKind::Asyncio => Ok(locals.0.event_loop.clone_ref(py).into_bound(py)),
+            crate::RuntimeKind::Trio => Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "get_current_loop is asyncio-specific; under trio use \
+                 get_current_locals().event_loop() to obtain the TrioToken",
+            )),
+        };
     }
+    if crate::trio::sniff(py).as_deref() == Some("trio") {
+        return Err(pyo3::exceptions::PyRuntimeError::new_err(
+            "get_current_loop is asyncio-specific; under trio use \
+             get_current_locals().event_loop() to obtain the TrioToken",
+        ));
+    }
+    get_running_loop(py)
 }
 
 /// Either copy the task locals from the current task OR get the current running loop and
@@ -113,7 +125,7 @@ where
     if let Some(locals) = R::get_task_locals() {
         Ok(locals)
     } else {
-        Ok(TaskLocals::with_running_loop(py)?.copy_context(py)?)
+        Ok(TaskLocals::current(py)?.copy_context(py)?)
     }
 }
 
@@ -615,6 +627,12 @@ where
     F: Future<Output = PyResult<T>> + Send + 'static,
     T: for<'py> IntoPyObject<'py> + Send + 'static,
 {
+    match locals.kind() {
+        crate::RuntimeKind::Trio => {
+            return crate::trio::future_into_coroutine::<R, _, _>(py, locals, fut);
+        }
+        crate::RuntimeKind::Asyncio => {}
+    }
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
     let py_fut = create_future(locals.0.event_loop.bind(py).clone())?;
@@ -689,7 +707,7 @@ where
     Ok(py_fut)
 }
 
-fn get_panic_message(any: &dyn std::any::Any) -> &str {
+pub(crate) fn get_panic_message(any: &dyn std::any::Any) -> &str {
     if let Some(str_slice) = any.downcast_ref::<&str>() {
         str_slice
     } else if let Some(string) = any.downcast_ref::<String>() {
@@ -1034,6 +1052,17 @@ where
     F: Future<Output = PyResult<T>> + 'static,
     T: for<'py> IntoPyObject<'py>,
 {
+    match locals.kind() {
+        crate::RuntimeKind::Trio => {
+            return Err(pyo3::exceptions::PyNotImplementedError::new_err(
+                "local_future_into_py is not supported under trio: spawn_local requires \
+                 a thread-local executor (e.g. tokio LocalSet) on the current thread, \
+                 which the trio event loop thread does not provide. Use future_into_py \
+                 with a Send future instead.",
+            ));
+        }
+        crate::RuntimeKind::Asyncio => {}
+    }
     let (cancel_tx, cancel_rx) = oneshot::channel();
 
     let py_fut = create_future(locals.0.event_loop.clone_ref(py).into_bound(py))?;
@@ -1576,19 +1605,31 @@ impl SenderGlue {
 const STREAM_GLUE: &str = r#"
 import inspect
 
-async def forward(gen, sender):
-    async for item in gen:
-        should_continue = sender.send(item)
+async def forward(gen, sender, swallow):
+    try:
+        async for item in gen:
+            should_continue = sender.send(item)
 
-        if inspect.isawaitable(should_continue):
-            should_continue = await should_continue
+            if inspect.isawaitable(should_continue):
+                should_continue = await should_continue
 
-        if should_continue:
-            continue
-        else:
-            break
-
-    sender.close()
+            if should_continue:
+                continue
+            else:
+                break
+    except BaseException as e:
+        if not swallow:
+            raise
+        # trio system task: re-raising would crash trio.run with
+        # TrioInternalError. Swallow everything; only print Exception
+        # subclasses (real errors). Cancelled / KeyboardInterrupt /
+        # SystemExit are BaseException-only and indicate control flow,
+        # not failure, so stay silent for those (KI is restricted to
+        # trio's main task and won't reach a system task in practice).
+        if isinstance(e, Exception):
+            import traceback; traceback.print_exc()
+    finally:
+        sender.close()
 "#;
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>unstable-streams</code></span> Convert an async generator into a stream
@@ -1727,27 +1768,47 @@ where
 
     let (tx, rx) = mpsc::channel(10);
 
-    locals.event_loop(py).call_method1(
-        pyo3::intern!(py, "call_soon_threadsafe"),
-        (
+    let sender = SenderGlue {
+        locals: locals.clone(),
+        tx: Arc::new(Mutex::new(GenericSender {
+            runtime: PhantomData::<R>,
+            tx,
+        })),
+    };
+    match locals.kind() {
+        crate::RuntimeKind::Asyncio => {
+            call_soon_threadsafe(
+                &locals.event_loop(py),
+                &locals.context(py),
+                (
+                    locals
+                        .event_loop(py)
+                        .getattr(pyo3::intern!(py, "create_task"))?,
+                    glue.call_method1(pyo3::intern!(py, "forward"), (gen, sender, false))?,
+                ),
+            )?;
+        }
+        crate::RuntimeKind::Trio => {
+            let spawn = crate::trio::trio_spawn_system_task(py)?;
+            // Bind args via functools.partial so a future positional change to
+            // spawn_system_task's signature can't silently shift `True`.
+            let bound_forward = crate::trio::functools_partial(py)?.call1((
+                glue.getattr(pyo3::intern!(py, "forward"))?,
+                gen,
+                sender,
+                true,
+            ))?;
+            // Propagate contextvars into the system task, matching
+            // schedule_awaitable.
+            let kwargs = pyo3::types::PyDict::new(py);
+            kwargs.set_item(pyo3::intern!(py, "context"), locals.context(py))?;
+            let bound_spawn =
+                crate::trio::functools_partial(py)?.call((spawn, bound_forward), Some(&kwargs))?;
             locals
                 .event_loop(py)
-                .getattr(pyo3::intern!(py, "create_task"))?,
-            glue.call_method1(
-                pyo3::intern!(py, "forward"),
-                (
-                    gen,
-                    SenderGlue {
-                        locals,
-                        tx: Arc::new(Mutex::new(GenericSender {
-                            runtime: PhantomData::<R>,
-                            tx,
-                        })),
-                    },
-                ),
-            )?,
-        ),
-    )?;
+                .call_method1(pyo3::intern!(py, "run_sync_soon"), (bound_spawn,))?;
+        }
+    }
     Ok(rx)
 }
 

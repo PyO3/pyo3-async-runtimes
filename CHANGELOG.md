@@ -12,6 +12,9 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 ## [Unreleased]
 
+- Add trio support: `TaskLocals`, `into_future_with_locals`, `generic::future_into_py_with_locals`, `into_stream_with_locals_v1` and `into_stream_with_locals_v2` now detect the running Python async library via `sniffio` and dispatch accordingly, so the existing `tokio::future_into_py`/`tokio::into_future` (and `async_std` equivalents) work unchanged when called from `trio`. No new public API or feature flag is required; the asyncio code path is unchanged. New `RuntimeKind` enum and `TaskLocals::{trio, current, kind, token}` are exposed for explicit control. `local_future_into_py_with_locals` returns `NotImplementedError` under trio (`spawn_local` requires a `LocalSet` incompatible with `trio.run`); `run`/`run_until_complete` remain asyncio-only. Requires `trio >= 0.23`.
+- `into_stream_v2`: a raising async generator now closes the stream promptly under asyncio (previously relied on `SenderGlue` GC), and the captured `TaskLocals` `contextvars.Context` is now propagated into the forwarding task under both asyncio and trio.
+
 ## [0.28.0] - 2026-02-03
 
 - Bump to pyo3 0.28. [#76](https://github.com/PyO3/pyo3-async-runtimes/pull/76)

@@ -147,11 +147,12 @@ where
     AsyncStdRuntime::scope_local(locals, fut).await
 }
 
-/// Get the current event loop from either Python or Rust async task local context
+/// Get the current asyncio event loop from either Python or Rust async task local context
 ///
 /// This function first checks if the runtime has a task-local reference to the Python event loop.
-/// If not, it calls [`get_running_loop`](`crate::get_running_loop`) to get the event loop
-/// associated with the current OS thread.
+/// If not, it falls back to [`TaskLocals::current`](crate::TaskLocals::current) (which detects the
+/// running async library via `sniffio`). Under `trio` this returns a `RuntimeError` since there is
+/// no asyncio event loop; use [`get_current_locals`] instead.
 pub fn get_current_loop(py: Python) -> PyResult<Bound<PyAny>> {
     generic::get_current_loop::<AsyncStdRuntime>(py)
 }
