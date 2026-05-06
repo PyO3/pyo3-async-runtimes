@@ -12,6 +12,28 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 ## [Unreleased]
 
+- Reduce per-call wrapper overhead of `future_into_py` / `future_into_py_with_locals`
+  (and the `local_*` variants) by ~35% on the gather-of-N benchmark while preserving
+  cancel propagation, panic isolation, and contextvars semantics. Three independent
+  changes:
+  - Drop the `spawn_blocking`-then-`Python::attach` hop on the completion path
+    (partial revert of [#60](https://github.com/PyO3/pyo3-async-runtimes/pull/60)
+    for this specific call site; the GIL section is sub-µs so the blocking-pool
+    dispatch was costlier than the worker-block it avoided). The `Runtime`
+    trait still requires `spawn_blocking` — only the internal call site changed.
+  - Collapse the outer + inner `R::spawn` panic-isolation pattern into a single
+    `R::spawn` with `AssertUnwindSafe(...).catch_unwind()` (the same pattern
+    already used by `AsyncStdRuntime::spawn`).
+  - Simplify `TokioRuntime`'s `TASK_LOCALS` declaration from
+    `OnceCell<TaskLocals>` to `TaskLocals` directly, removing redundant cell
+    ceremony from `scope` / `scope_local`.
+- Add `benches/future_into_py.rs` (Criterion) measuring the wrapper path with
+  `single`, `gather_10`, and `gather_100` variants. Adds `criterion = "0.5"` as
+  a `dev-dependencies` only.
+- Drop the stale `if py.version_info() >= (3, 14)` early-return from the three
+  uvloop integration tests (uvloop 0.22.1 supports 3.14 end-to-end). The
+  free-threaded build guard is preserved.
+
 ## [0.28.0] - 2026-02-03
 
 - Bump to pyo3 0.28. [#76](https://github.com/PyO3/pyo3-async-runtimes/pull/76)
