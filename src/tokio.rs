@@ -13,7 +13,6 @@
 //! features = ["unstable-streams"]
 //! ```
 
-use std::cell::OnceCell;
 use std::ops::Deref;
 use std::sync::OnceLock;
 use std::{future::Future, pin::Pin, sync::Mutex};
@@ -79,7 +78,7 @@ impl generic::JoinError for task::JoinError {
 struct TokioRuntime;
 
 tokio::task_local! {
-    static TASK_LOCALS: OnceCell<TaskLocals>;
+    static TASK_LOCALS: TaskLocals;
 }
 
 impl GenericRuntime for TokioRuntime {
@@ -108,16 +107,11 @@ impl ContextExt for TokioRuntime {
     where
         F: Future<Output = R> + Send + 'static,
     {
-        let cell = OnceCell::new();
-        cell.set(locals).unwrap();
-
-        Box::pin(TASK_LOCALS.scope(cell, fut))
+        Box::pin(TASK_LOCALS.scope(locals, fut))
     }
 
     fn get_task_locals() -> Option<TaskLocals> {
-        TASK_LOCALS
-            .try_with(|c| c.get().map(|locals| locals.clone()))
-            .unwrap_or_default()
+        TASK_LOCALS.try_with(|locals| locals.clone()).ok()
     }
 }
 
@@ -135,10 +129,7 @@ impl LocalContextExt for TokioRuntime {
     where
         F: Future<Output = R> + 'static,
     {
-        let cell = OnceCell::new();
-        cell.set(locals).unwrap();
-
-        Box::pin(TASK_LOCALS.scope(cell, fut))
+        Box::pin(TASK_LOCALS.scope(locals, fut))
     }
 }
 
