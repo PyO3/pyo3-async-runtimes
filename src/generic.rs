@@ -638,49 +638,43 @@ where
             )
             .await;
 
-            // We should not hold GIL inside async-std/tokio event loop,
-            // because a blocked task may prevent other tasks from progressing.
-            R::spawn_blocking(|| {
+            Python::attach(move |py| {
+                if cancelled(future_tx1.bind(py))
+                    .map_err(dump_err(py))
+                    .unwrap_or(false)
+                {
+                    return;
+                }
+
+                let _ = set_result(
+                    &locals2.event_loop(py),
+                    future_tx1.bind(py),
+                    result.and_then(|val| val.into_py_any(py)),
+                )
+                .map_err(dump_err(py));
+            });
+        })
+        .await
+        {
+            if e.is_panic() {
                 Python::attach(move |py| {
-                    if cancelled(future_tx1.bind(py))
+                    if cancelled(future_tx2.bind(py))
                         .map_err(dump_err(py))
                         .unwrap_or(false)
                     {
                         return;
                     }
 
+                    let panic_message = format!(
+                        "rust future panicked: {}",
+                        get_panic_message(&e.into_panic())
+                    );
                     let _ = set_result(
-                        &locals2.event_loop(py),
-                        future_tx1.bind(py),
-                        result.and_then(|val| val.into_py_any(py)),
+                        locals.0.event_loop.bind(py),
+                        future_tx2.bind(py),
+                        Err(RustPanic::new_err(panic_message)),
                     )
                     .map_err(dump_err(py));
-                });
-            });
-        })
-        .await
-        {
-            if e.is_panic() {
-                R::spawn_blocking(|| {
-                    Python::attach(move |py| {
-                        if cancelled(future_tx2.bind(py))
-                            .map_err(dump_err(py))
-                            .unwrap_or(false)
-                        {
-                            return;
-                        }
-
-                        let panic_message = format!(
-                            "rust future panicked: {}",
-                            get_panic_message(&e.into_panic())
-                        );
-                        let _ = set_result(
-                            locals.0.event_loop.bind(py),
-                            future_tx2.bind(py),
-                            Err(RustPanic::new_err(panic_message)),
-                        )
-                        .map_err(dump_err(py));
-                    });
                 });
             }
         }
