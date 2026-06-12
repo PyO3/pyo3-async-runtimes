@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"attr":["main","test"],"fn":["future_into_py","future_into_py_with_locals","get_current_locals","get_current_loop","into_future","into_stream_v1","into_stream_v2","into_stream_with_locals_v1","into_stream_with_locals_v2","local_future_into_py","local_future_into_py_with_locals","run","run_until_complete","scope","scope_local"],"mod":["re_exports"]};
