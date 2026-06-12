@@ -5,7 +5,7 @@
 [![crates.io](https://img.shields.io/crates/v/pyo3-async-runtimes)](https://crates.io/crates/pyo3-async-runtimes)
 [![minimum rustc 1.63](https://img.shields.io/badge/rustc-1.63+-blue.svg)](https://rust-lang.github.io/rfcs/2495-min-rust-version.html)
 
-***Forked from [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21+.***
+**_Forked from [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio/) to deliver compatibility for PyO3 0.21+._**
 
 [Rust](http://www.rust-lang.org/) bindings for [Python](https://www.python.org/)'s [Asyncio Library](https://docs.python.org/3/library/asyncio.html). This crate facilitates interactions between Rust Futures and Python Coroutines and manages the lifecycle of their corresponding event loops.
 
@@ -50,8 +50,8 @@ Here we initialize the runtime, import Python's `asyncio` library and run the gi
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.28" }
-pyo3-async-runtimes = { version = "0.28", features = ["attributes", "async-std-runtime"] }
+pyo3 = { version = "0.29" }
+pyo3-async-runtimes = { version = "0.29", features = ["attributes", "async-std-runtime"] }
 async-std = "1.13"
 ```
 
@@ -80,8 +80,8 @@ attribute.
 ```toml
 # Cargo.toml dependencies
 [dependencies]
-pyo3 = { version = "0.28" }
-pyo3-async-runtimes = { version = "0.28", features = ["attributes", "tokio-runtime"] }
+pyo3 = { version = "0.29" }
+pyo3-async-runtimes = { version = "0.29", features = ["attributes", "tokio-runtime"] }
 tokio = "1.40"
 ```
 
@@ -126,8 +126,8 @@ For `async-std`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.28", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.28", features = ["async-std-runtime"] }
+pyo3 = { version = "0.29", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.29", features = ["async-std-runtime"] }
 async-std = "1.13"
 ```
 
@@ -135,8 +135,8 @@ For `tokio`:
 
 ```toml
 [dependencies]
-pyo3 = { version = "0.28", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.28", features = ["tokio-runtime"] }
+pyo3 = { version = "0.29", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.29", features = ["tokio-runtime"] }
 tokio = "1.40"
 ```
 
@@ -430,8 +430,8 @@ name = "my_async_module"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.28", features = ["extension-module"] }
-pyo3-async-runtimes = { version = "0.28", features = ["tokio-runtime"] }
+pyo3 = { version = "0.29", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.29", features = ["tokio-runtime"] }
 async-std = "1.13"
 tokio = "1.40"
 ```
@@ -490,8 +490,8 @@ event loop before we can install the `uvloop` policy.
 ```toml
 [dependencies]
 async-std = "1.13"
-pyo3 = "0.28"
-pyo3-async-runtimes = { version = "0.28", features = ["async-std-runtime"] }
+pyo3 = "0.29"
+pyo3-async-runtimes = { version = "0.29", features = ["async-std-runtime"] }
 ```
 
 ```rust no_run
