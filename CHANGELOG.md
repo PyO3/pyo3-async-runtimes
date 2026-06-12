@@ -12,6 +12,10 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-06-12
+
+- chore: bump pyo3 version to 0.29. [#85](https://github.com/PyO3/pyo3-async-runtimes/pull/85)
+
 ## [0.28.0] - 2026-02-03
 
 - Bump to pyo3 0.28. [#76](https://github.com/PyO3/pyo3-async-runtimes/pull/76)
@@ -56,7 +60,9 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 Previous versions were published from [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio). Consult that library for older changes.
 
-[Unreleased]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.27.0...HEAD
+[Unreleased]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.29.0...HEAD
+[0.29.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.28.0...v0.29.0
+[0.28.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.24.0...v0.25.0
