@@ -672,7 +672,7 @@ where
 
                         let panic_message = format!(
                             "rust future panicked: {}",
-                            get_panic_message(&e.into_panic())
+                            get_panic_message(&*e.into_panic())
                         );
                         let _ = set_result(
                             locals.0.event_loop.bind(py),
@@ -1086,7 +1086,7 @@ where
 
                     let panic_message = format!(
                         "rust future panicked: {}",
-                        get_panic_message(&e.into_panic())
+                        get_panic_message(&*e.into_panic())
                     );
                     let _ = set_result(
                         locals.0.event_loop.bind(py),

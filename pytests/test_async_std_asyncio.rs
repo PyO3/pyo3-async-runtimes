@@ -105,6 +105,10 @@ async fn test_panic() -> PyResult<()> {
         Ok(_) => panic!("coroutine should panic"),
         Err(e) => Python::attach(|py| {
             if e.is_instance_of::<pyo3_async_runtimes::err::RustPanic>(py) {
+                assert_eq!(
+                    e.value(py).to_string(),
+                    "rust future panicked: this panic was intentional!"
+                );
                 Ok(())
             } else {
                 panic!("expected RustPanic err")
