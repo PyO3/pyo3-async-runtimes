@@ -12,6 +12,8 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 ## [Unreleased]
 
+- Fix `RustPanic` raised by `future_into_py` and `local_future_into_py` always reading `unknown error` instead of the panic message. [#91](https://github.com/PyO3/pyo3-async-runtimes/issues/91)
+
 ## [0.29.0] - 2026-06-12
 
 - chore: bump pyo3 version to 0.29. [#85](https://github.com/PyO3/pyo3-async-runtimes/pull/85)

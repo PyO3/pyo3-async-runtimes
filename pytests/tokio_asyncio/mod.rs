@@ -131,12 +131,50 @@ async fn test_panic() -> PyResult<()> {
         Ok(_) => panic!("coroutine should panic"),
         Err(e) => Python::attach(|py| {
             if e.is_instance_of::<pyo3_async_runtimes::err::RustPanic>(py) {
+                assert_eq!(
+                    e.value(py).to_string(),
+                    "rust future panicked: this panic was intentional!"
+                );
                 Ok(())
             } else {
                 panic!("expected RustPanic err")
             }
         }),
     }
+}
+
+#[pyo3_async_runtimes::tokio::test]
+fn test_local_panic(event_loop: Py<PyAny>) -> PyResult<()> {
+    let error = tokio::task::LocalSet::new().block_on(
+        pyo3_async_runtimes::tokio::get_runtime(),
+        async {
+            let fut = Python::attach(|py| -> PyResult<_> {
+                let locals = TaskLocals::new(event_loop.into_bound(py));
+
+                #[allow(deprecated)]
+                let py_future = pyo3_async_runtimes::tokio::local_future_into_py_with_locals::<
+                    _,
+                    (),
+                >(py, locals.clone(), async {
+                    panic!("this panic was intentional!")
+                })?;
+
+                pyo3_async_runtimes::into_future_with_locals(&locals, py_future)
+            })?;
+
+            PyResult::Ok(fut.await.expect_err("coroutine should panic"))
+        },
+    )?;
+
+    Python::attach(|py| {
+        assert!(error.is_instance_of::<pyo3_async_runtimes::err::RustPanic>(py));
+        assert_eq!(
+            error.value(py).to_string(),
+            "rust future panicked: this panic was intentional!"
+        );
+    });
+
+    Ok(())
 }
 
 #[pyo3_async_runtimes::tokio::test]
