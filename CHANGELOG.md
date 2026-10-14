@@ -12,6 +12,9 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 ## [Unreleased]
 
+- chore: bump pyo3 version to 0.30. [#86](https://github.com/PyO3/pyo3-async-runtimes/pull/86)
+- bump MSRV to 1.85 to match pyo3-0.30
+
 ## [0.29.0] - 2026-06-12
 
 - chore: bump pyo3 version to 0.29. [#85](https://github.com/PyO3/pyo3-async-runtimes/pull/85)
