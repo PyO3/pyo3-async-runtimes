@@ -20,7 +20,7 @@ rust-version = { workspace = true }
 [workspace]
 members = ["pyo3-async-runtimes-macros"]
 package.edition = "2021"
-package.rust-version = "1.83"
+package.rust-version = "1.85"
 
 [features]
 async-std-runtime = ["async-std"]
