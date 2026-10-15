@@ -310,11 +310,17 @@ per-event-loop socket reader. Completion callbacks run on the Python loop
 thread, so Rust runtime threads do not need to acquire the GIL to resolve
 Python futures. This uses `add_reader` where available (including the standard
 selector loop and uvloop); loops without it, such as Windows' default proactor
-loop, keep the existing completion path. The reader callback runs in an empty
+loop, keep the existing completion path. Calls from another thread while the
+target loop is running also use that path, without registering a reader off
+the loop thread. The reader callback runs in an empty
 `contextvars` context; awaiting tasks retain their own contexts. Cancellation
 continues to cancel the Rust future, and already-completed Python futures are
 left untouched. Completions are drained in bounded batches for loop fairness,
 and the bridge does not keep a closed event loop alive.
+The bridge retains pending Python futures until delivery or loop cleanup.
+Cancelled or otherwise completed futures are skipped before result conversion.
+A panic during result conversion becomes `RustPanic` without interrupting the
+remaining completions in the batch.
 
 ## Managing Event Loops
 

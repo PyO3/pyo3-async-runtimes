@@ -1,18 +1,20 @@
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     io::{self, Read, Write},
     os::fd::AsRawFd,
     os::unix::net::UnixStream,
+    panic::{catch_unwind, AssertUnwindSafe},
     sync::{Arc, Mutex},
 };
 
-use pyo3::{exceptions::PyOSError, prelude::*};
+use pyo3::{exceptions::PyOSError, prelude::*, PyTraverseError, PyVisit};
 
-pub(crate) type Completion = Box<dyn for<'py> FnOnce(Python<'py>) + Send + 'static>;
+type Completion = Box<dyn for<'py> FnOnce(Python<'py>) -> PyResult<Py<PyAny>> + Send + 'static>;
 
 struct QueueState {
-    completions: VecDeque<Completion>,
+    completions: VecDeque<(usize, Completion)>,
     signaled: bool,
+    closed: bool,
 }
 
 pub(crate) struct BridgeCore {
@@ -26,14 +28,19 @@ impl BridgeCore {
             state: Mutex::new(QueueState {
                 completions: VecDeque::new(),
                 signaled: false,
+                closed: false,
             }),
             writer: Mutex::new(writer),
         }
     }
 
-    pub(crate) fn send(&self, completion: Completion) {
+    pub(crate) fn send(&self, id: usize, completion: Completion) {
         let mut state = self.state.lock().expect("completion queue poisoned");
-        state.completions.push_back(completion);
+        if state.closed {
+            drop(state);
+            return;
+        }
+        state.completions.push_back((id, completion));
 
         if !state.signaled {
             state.signaled = true;
@@ -49,11 +56,13 @@ impl BridgeCore {
     }
 
     fn signal(&self) -> io::Result<()> {
-        let written = self
-            .writer
-            .lock()
-            .expect("completion socket poisoned")
-            .write(&[1])?;
+        let mut writer = self.writer.lock().expect("completion socket poisoned");
+        let written = loop {
+            match writer.write(&[1]) {
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                result => break result?,
+            }
+        };
         if written == 1 {
             Ok(())
         } else {
@@ -66,13 +75,56 @@ impl BridgeCore {
 }
 
 #[pyclass(weakref)]
-struct CompletionBridge {
+pub(crate) struct CompletionBridge {
     core: Arc<BridgeCore>,
     reader: Mutex<UnixStream>,
+    // Keep future -> loop references visible to Python's cyclic GC.
+    futures: Mutex<HashMap<usize, Py<PyAny>>>,
+}
+
+impl CompletionBridge {
+    pub(crate) fn register(&self, future: &Bound<'_, PyAny>) -> (Arc<BridgeCore>, usize) {
+        let id = future.as_ptr() as usize;
+        self.futures
+            .lock()
+            .expect("completion futures poisoned")
+            .insert(id, future.clone().unbind());
+        (self.core.clone(), id)
+    }
+}
+
+impl Drop for CompletionBridge {
+    fn drop(&mut self) {
+        let queued = {
+            let mut state = self.core.state.lock().expect("completion queue poisoned");
+            state.closed = true;
+            std::mem::take(&mut state.completions)
+        };
+        drop(queued);
+    }
 }
 
 #[pymethods]
 impl CompletionBridge {
+    fn __traverse__(&self, visit: PyVisit<'_>) -> Result<(), PyTraverseError> {
+        for future in self
+            .futures
+            .lock()
+            .expect("completion futures poisoned")
+            .values()
+        {
+            visit.call(future)?;
+        }
+        Ok(())
+    }
+
+    fn __clear__(&mut self) {
+        self.futures
+            .get_mut()
+            .expect("completion futures poisoned")
+            .clear();
+    }
+
     #[getter]
     fn fd(&self) -> i32 {
         self.reader
@@ -82,12 +134,14 @@ impl CompletionBridge {
     }
 
     fn __call__(&self, py: Python<'_>) -> PyResult<()> {
+        // Consume wakeups before resetting signaled, or a concurrent send can be lost.
         let mut reader = self.reader.lock().expect("completion socket poisoned");
         let mut bytes = [0; 256];
         loop {
             match reader.read(&mut bytes) {
                 Ok(0) => break,
                 Ok(_) => {}
+                Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
                 Err(err) if err.kind() == io::ErrorKind::WouldBlock => break,
                 Err(err) => return Err(PyOSError::new_err(err.to_string())),
             }
@@ -111,8 +165,43 @@ impl CompletionBridge {
             completions
         };
 
-        for completion in completions {
-            completion(py);
+        for (id, completion) in completions {
+            let future = self
+                .futures
+                .lock()
+                .expect("completion futures poisoned")
+                .remove(&id);
+            let Some(future) = future else {
+                continue;
+            };
+            let future = future.bind(py);
+            let delivered = (|| {
+                if future.call_method0("done")?.is_truthy()? {
+                    return Ok(());
+                }
+                let result =
+                    catch_unwind(AssertUnwindSafe(|| completion(py))).unwrap_or_else(|panic| {
+                        Err(crate::err::RustPanic::new_err(format!(
+                            "rust result conversion panicked: {}",
+                            crate::generic::get_panic_message(&*panic)
+                        )))
+                    });
+                if future.call_method0("done")?.is_truthy()? {
+                    return Ok(());
+                }
+                match result {
+                    Ok(value) => {
+                        future.call_method1("set_result", (value,))?;
+                    }
+                    Err(error) => {
+                        future.call_method1("set_exception", (error.into_value(py),))?;
+                    }
+                }
+                Ok::<(), PyErr>(())
+            })();
+            if let Err(error) = delivered {
+                crate::dump_err(py)(error);
+            }
         }
 
         Ok(())
@@ -122,7 +211,7 @@ impl CompletionBridge {
 pub(crate) fn for_loop(
     py: Python<'_>,
     event_loop: &Bound<'_, PyAny>,
-) -> PyResult<Option<Arc<BridgeCore>>> {
+) -> PyResult<Option<Py<CompletionBridge>>> {
     const ATTRIBUTE: &str = "_pyo3_async_runtimes_completion_bridge";
 
     match event_loop.getattr(ATTRIBUTE) {
@@ -135,14 +224,12 @@ pub(crate) fn for_loop(
             if existing.is_none() {
                 event_loop.delattr(ATTRIBUTE)?;
             } else {
-                let bridge = existing
-                    .extract::<PyRef<'_, CompletionBridge>>()
-                    .map_err(|_| {
-                        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                            "event-loop attribute {ATTRIBUTE} is already in use"
-                        ))
-                    })?;
-                return Ok(Some(bridge.core.clone()));
+                let bridge = existing.extract::<Py<CompletionBridge>>().map_err(|_| {
+                    PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                        "event-loop attribute {ATTRIBUTE} is already in use"
+                    ))
+                })?;
+                return Ok(Some(bridge));
             }
         }
         Err(err) if err.is_instance_of::<pyo3::exceptions::PyAttributeError>(py) => {}
@@ -170,6 +257,7 @@ pub(crate) fn for_loop(
         CompletionBridge {
             core: core.clone(),
             reader: Mutex::new(reader),
+            futures: Mutex::new(HashMap::new()),
         },
     )?;
     let fd = bridge
@@ -199,7 +287,26 @@ pub(crate) fn for_loop(
         return Err(err);
     }
 
-    Ok(Some(core))
+    Ok(Some(bridge))
+}
+
+pub(crate) fn for_future(
+    py: Python<'_>,
+    event_loop: &Bound<'_, PyAny>,
+    future: &Bound<'_, PyAny>,
+) -> PyResult<Option<(Arc<BridgeCore>, usize)>> {
+    let owner = future.call_method0("get_loop")?;
+    match crate::get_running_loop(py) {
+        Ok(running) if !running.is(&owner) => return Ok(None),
+        Ok(_) => {}
+        Err(error) if error.is_instance_of::<pyo3::exceptions::PyRuntimeError>(py) => {
+            if owner.call_method0("is_running")?.is_truthy()? {
+                return Ok(None);
+            }
+        }
+        Err(error) => return Err(error),
+    }
+    Ok(for_loop(py, event_loop)?.map(|bridge| bridge.borrow(py).register(future)))
 }
 
 #[cfg(test)]
@@ -211,7 +318,9 @@ mod tests {
         Python::initialize();
         Python::attach(|py| {
             let event_loop = py.import("asyncio")?.call_method0("new_event_loop")?;
-            let _core = for_loop(py, &event_loop)?.expect("selector loop supports add_reader");
+            let bridge = for_loop(py, &event_loop)?.expect("selector loop supports add_reader");
+            let _core = bridge.borrow(py).core.clone();
+            drop(bridge);
             let bridge_ref = event_loop.getattr("_pyo3_async_runtimes_completion_bridge")?;
             assert!(!bridge_ref.call0()?.is_none());
 

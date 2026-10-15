@@ -378,31 +378,6 @@ fn set_result(
     Ok(())
 }
 
-#[cfg(unix)]
-fn set_result_on_loop(
-    py: Python<'_>,
-    future: &Bound<'_, PyAny>,
-    result: PyResult<Py<PyAny>>,
-) -> PyResult<()> {
-    if future
-        .getattr(pyo3::intern!(py, "done"))?
-        .call0()?
-        .is_truthy()?
-    {
-        return Ok(());
-    }
-
-    let (method, value) = match result {
-        Ok(value) => (pyo3::intern!(py, "set_result"), value.into_bound(py)),
-        Err(err) => (
-            pyo3::intern!(py, "set_exception"),
-            err.into_bound_py_any(py)?,
-        ),
-    };
-    future.call_method1(method, (value,))?;
-    Ok(())
-}
-
 /// Convert a Python `awaitable` into a Rust Future
 ///
 /// This function simply forwards the future and the task locals returned by [`get_current_locals`]
@@ -529,8 +504,8 @@ where
 ///
 /// On Unix, completion is queued to an event-loop-owned socket reader when the
 /// loop supports `add_reader`. The Rust runtime thread does not acquire the
-/// GIL to deliver the result. Loops without `add_reader` use the existing
-/// blocking completion path.
+/// GIL to deliver the result. Loops without `add_reader`, and conversions from
+/// outside a running target loop's thread, use the existing blocking completion path.
 ///
 /// Python `contextvars` are preserved when calling async Python functions within the Rust future
 /// via [`into_future`] (new behaviour in `v0.15`).
@@ -656,12 +631,9 @@ where
     )?;
 
     #[cfg(unix)]
-    if let Some(bridge) = crate::completion_bridge::for_loop(py, locals.0.event_loop.bind(py))? {
-        let future_weak: Py<PyAny> = py
-            .import("weakref")?
-            .call_method1("ref", (&py_fut,))?
-            .unbind();
-        let future_for_result = future_weak.clone_ref(py);
+    if let Some((bridge, id)) =
+        crate::completion_bridge::for_future(py, locals.0.event_loop.bind(py), &py_fut)?
+    {
         let bridge_for_result = bridge.clone();
         let task = R::spawn(async move {
             let result = R::scope(
@@ -669,21 +641,10 @@ where
                 Cancellable::new_with_cancel_rx(fut, cancel_rx),
             )
             .await;
-            bridge.send(Box::new(move |py| {
-                let future = match future_weak.bind(py).call0() {
-                    Ok(future) if !future.is_none() => future,
-                    Ok(_) => return,
-                    Err(err) => {
-                        dump_err(py)(err);
-                        return;
-                    }
-                };
-                if let Err(err) =
-                    set_result_on_loop(py, &future, result.and_then(|val| val.into_py_any(py)))
-                {
-                    dump_err(py)(err);
-                }
-            }));
+            bridge.send(
+                id,
+                Box::new(move |py| result.and_then(|val| val.into_py_any(py))),
+            );
         });
 
         R::spawn(async move {
@@ -693,21 +654,10 @@ where
                         "rust future panicked: {}",
                         get_panic_message(&err.into_panic())
                     );
-                    bridge_for_result.send(Box::new(move |py| {
-                        let future = match future_for_result.bind(py).call0() {
-                            Ok(future) if !future.is_none() => future,
-                            Ok(_) => return,
-                            Err(err) => {
-                                dump_err(py)(err);
-                                return;
-                            }
-                        };
-                        if let Err(err) =
-                            set_result_on_loop(py, &future, Err(RustPanic::new_err(panic_message)))
-                        {
-                            dump_err(py)(err);
-                        }
-                    }));
+                    bridge_for_result.send(
+                        id,
+                        Box::new(move |_| Err(RustPanic::new_err(panic_message))),
+                    );
                 }
             }
         });
@@ -779,7 +729,7 @@ where
     Ok(py_fut)
 }
 
-fn get_panic_message(any: &dyn std::any::Any) -> &str {
+pub(crate) fn get_panic_message(any: &dyn std::any::Any) -> &str {
     if let Some(str_slice) = any.downcast_ref::<&str>() {
         str_slice
     } else if let Some(string) = any.downcast_ref::<String>() {
@@ -877,8 +827,8 @@ impl PyDoneCallback {
 ///
 /// On Unix, completion is queued to an event-loop-owned socket reader when the
 /// loop supports `add_reader`. The Rust runtime thread does not acquire the
-/// GIL to deliver the result. Loops without `add_reader` use the existing
-/// blocking completion path.
+/// GIL to deliver the result. Loops without `add_reader`, and conversions from
+/// outside a running target loop's thread, use the existing blocking completion path.
 ///
 /// Python `contextvars` are preserved when calling async Python functions within the Rust future
 /// via [`into_future`] (new behaviour in `v0.15`).

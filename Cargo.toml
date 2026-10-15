@@ -119,6 +119,12 @@ path = "pytests/test_race_condition_regression.rs"
 harness = false
 required-features = ["async-std-runtime", "testing"]
 
+[[test]]
+name = "test_completion_bridge_contract"
+path = "pytests/test_completion_bridge_contract.rs"
+harness = false
+required-features = ["tokio-runtime"]
+
 [dependencies]
 async-channel = { version = "2.3", optional = true }
 clap = { version = "4.5", optional = true }
