@@ -10,7 +10,7 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 <!-- towncrier release notes start -->
 
-## [Unreleased]
+## [0.30.0] - 2026-10-15
 
 - chore: bump pyo3 version to 0.30. [#94](https://github.com/PyO3/pyo3-async-runtimes/pull/94)
 - bump MSRV to 1.85 to match pyo3-0.30
