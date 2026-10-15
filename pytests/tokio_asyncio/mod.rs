@@ -126,10 +126,13 @@ fn run_completion_bridge_test<'py>(py: Python<'py>, name: &str) -> PyResult<Boun
 
 #[pyo3_async_runtimes::tokio::test]
 async fn test_completion_bridge_batches_and_falls_back() -> PyResult<()> {
-    let batch = Python::attach(|py| {
-        pyo3_async_runtimes::tokio::into_future(run_completion_bridge_test(py, "test_batch")?)
-    })?;
-    batch.await?;
+    #[cfg(unix)]
+    {
+        let batch = Python::attach(|py| {
+            pyo3_async_runtimes::tokio::into_future(run_completion_bridge_test(py, "test_batch")?)
+        })?;
+        batch.await?;
+    }
 
     let fallback = Python::attach(|py| {
         pyo3_async_runtimes::tokio::into_future(run_completion_bridge_test(py, "test_fallback")?)

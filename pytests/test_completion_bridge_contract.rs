@@ -73,6 +73,7 @@ fn flush_deferred_references(py: Python<'_>) {
 const TESTS: &str = r#"
 import asyncio
 import gc
+import sys
 import threading
 import time
 import weakref
@@ -103,7 +104,10 @@ async def ordinary_and_batched(module):
     )
     assert values == [42] * 2000
     bridge_ref = getattr(loop, "_pyo3_async_runtimes_completion_bridge", None)
-    assert bridge_ref is not None and bridge_ref() is not None, "fast path not registered"
+    if sys.platform == "win32":
+        assert bridge_ref is None, "Windows must use the existing completion path"
+    else:
+        assert bridge_ref is not None and bridge_ref() is not None, "fast path not registered"
 
 async def unsupported_reader(module):
     loop = LoopProxy(asyncio.get_running_loop(), "unsupported")
@@ -225,19 +229,27 @@ def main(module):
         unsupported_reader,
         cancel_drops_future,
         cancellation_races,
-        cancelled_result_is_not_converted,
         dropped_python_future_keeps_completion,
-        conversion_panic_resolves_future,
         cross_thread_registration,
-        already_completed_result_is_not_converted,
     ]
-    factories = [("asyncio", asyncio.new_event_loop)]
-    try:
-        import uvloop
-    except ImportError:
-        print("SKIP uvloop: not installed", flush=True)
+    if sys.platform == "win32":
+        factories = [
+            ("proactor", asyncio.ProactorEventLoop),
+            ("selector", asyncio.SelectorEventLoop),
+        ]
     else:
-        factories.append(("uvloop", uvloop.new_event_loop))
+        tests.extend([
+            cancelled_result_is_not_converted,
+            conversion_panic_resolves_future,
+            already_completed_result_is_not_converted,
+        ])
+        factories = [("asyncio", asyncio.new_event_loop)]
+        try:
+            import uvloop
+        except ImportError:
+            print("SKIP uvloop: not installed", flush=True)
+        else:
+            factories.append(("uvloop", uvloop.new_event_loop))
     failures = []
     for name, new_loop in factories:
         for test in tests:
@@ -252,7 +264,10 @@ def main(module):
                 print(f"PASS {name}/{test.__name__}", flush=True)
             finally:
                 loop.close()
-        for test in [loop_close_cleanup, unclosed_loop_cycle_cleanup]:
+        cleanup_tests = [] if sys.platform == "win32" else [
+            loop_close_cleanup, unclosed_loop_cycle_cleanup
+        ]
+        for test in cleanup_tests:
             try:
                 test(module, new_loop)
             except BaseException as error:
@@ -286,9 +301,6 @@ def main(module):
 "#;
 
 fn main() -> PyResult<()> {
-    if !cfg!(unix) {
-        return Ok(());
-    }
     Python::initialize();
     Python::attach(|py| {
         let extension = PyModule::new(py, "completion_contract")?;

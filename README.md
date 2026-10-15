@@ -322,6 +322,11 @@ Cancelled or otherwise completed futures are skipped before result conversion.
 A panic during result conversion becomes `RustPanic` without interrupting the
 remaining completions in the batch.
 
+The completion contract tests also exercise the existing Windows fallback with
+explicit Proactor and Selector event loops: batched results, cancellation
+propagation and races, pending-future lifetime, and cross-thread conversions.
+Unix-only conversion and bridge-cleanup checks are not applied to that fallback.
+
 ## Managing Event Loops
 
 Python's event loop requires some special treatment, especially regarding the main thread. Some of
