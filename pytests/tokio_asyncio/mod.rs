@@ -27,6 +27,118 @@ fn sleep<'p>(py: Python<'p>, secs: Bound<'p, PyAny>) -> PyResult<Bound<'p, PyAny
     })
 }
 
+#[pyfunction]
+fn immediate_with_loop<'p>(
+    py: Python<'p>,
+    event_loop: Bound<'p, PyAny>,
+    value: usize,
+) -> PyResult<Bound<'p, PyAny>> {
+    pyo3_async_runtimes::tokio::future_into_py_with_locals(
+        py,
+        TaskLocals::new(event_loop),
+        async move { Ok(value) },
+    )
+}
+
+const COMPLETION_BRIDGE_TEST: &str = r#"
+import asyncio
+import contextvars
+import threading
+
+class LoopProxy:
+    def __init__(self, loop):
+        self._loop = loop
+
+    def __getattr__(self, name):
+        if name == "_pyo3_async_runtimes_completion_bridge":
+            raise AttributeError(name)
+        return getattr(self._loop, name)
+
+async def test_batch(immediate):
+    loop = LoopProxy(asyncio.get_running_loop())
+    bridge_attribute = "_pyo3_async_runtimes_completion_bridge"
+    loop_thread = threading.get_ident()
+    completion_context = contextvars.ContextVar(
+        "completion_context", default="bridge"
+    )
+    token = completion_context.set("caller")
+    add_reader = loop.add_reader
+    add_reader_calls = 0
+
+    class ThreadCheckingFuture(asyncio.Future):
+        def set_result(self, result):
+            assert threading.get_ident() == loop_thread, "result set off loop thread"
+            assert completion_context.get() == "bridge", "callback context leaked"
+            super().set_result(result)
+
+        def set_exception(self, exception):
+            assert threading.get_ident() == loop_thread, "exception set off loop thread"
+            assert completion_context.get() == "bridge", "callback context leaked"
+            super().set_exception(exception)
+
+    loop.create_future = lambda: ThreadCheckingFuture(loop=loop._loop)
+
+    def track_add_reader(fd, callback, *args):
+        nonlocal add_reader_calls
+        add_reader_calls += 1
+        return add_reader(fd, callback, *args)
+
+    loop.add_reader = track_add_reader
+    try:
+        for _ in range(5):
+            values = await asyncio.gather(
+                *(immediate(loop, i) for i in range(512))
+            )
+            assert values == list(range(512))
+            assert completion_context.get() == "caller", "awaiting task context changed"
+        assert add_reader_calls == 1, f"reader was registered {add_reader_calls} times"
+    finally:
+        loop.add_reader = add_reader
+        completion_context.reset(token)
+        bridge_ref = getattr(loop, bridge_attribute, None)
+        bridge = bridge_ref() if bridge_ref is not None else None
+        if bridge is not None:
+            loop.remove_reader(bridge.fd)
+            delattr(loop, bridge_attribute)
+
+async def test_fallback(immediate):
+    loop = LoopProxy(asyncio.get_running_loop())
+
+    def unsupported(*args, **kwargs):
+        raise NotImplementedError
+
+    loop.add_reader = unsupported
+    assert await immediate(loop, 42) == 42
+
+"#;
+
+fn run_completion_bridge_test<'py>(py: Python<'py>, name: &str) -> PyResult<Bound<'py, PyAny>> {
+    let module = PyModule::from_code(
+        py,
+        &std::ffi::CString::new(COMPLETION_BRIDGE_TEST).unwrap(),
+        &std::ffi::CString::new("completion_bridge_test.py").unwrap(),
+        &std::ffi::CString::new("completion_bridge_test").unwrap(),
+    )?;
+    let extension = PyModule::new(py, "completion_bridge_extension")?;
+    extension.add_wrapped(wrap_pyfunction!(immediate_with_loop))?;
+    module.call_method1(name, (extension.getattr("immediate_with_loop")?,))
+}
+
+#[pyo3_async_runtimes::tokio::test]
+async fn test_completion_bridge_batches_and_falls_back() -> PyResult<()> {
+    let batch = Python::attach(|py| {
+        pyo3_async_runtimes::tokio::into_future(run_completion_bridge_test(py, "test_batch")?)
+    })?;
+    batch.await?;
+
+    let fallback = Python::attach(|py| {
+        pyo3_async_runtimes::tokio::into_future(run_completion_bridge_test(py, "test_fallback")?)
+    })?;
+    fallback.await?;
+
+    Ok(())
+}
+
 #[pyo3_async_runtimes::tokio::test]
 async fn test_future_into_py() -> PyResult<()> {
     let fut = Python::attach(|py| {
@@ -133,7 +245,11 @@ async fn test_panic() -> PyResult<()> {
             if e.is_instance_of::<pyo3_async_runtimes::err::RustPanic>(py) {
                 Ok(())
             } else {
-                panic!("expected RustPanic err")
+                panic!(
+                    "expected RustPanic err, got {}: {}",
+                    e.get_type(py).name().unwrap(),
+                    e
+                )
             }
         }),
     }

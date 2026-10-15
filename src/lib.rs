@@ -357,9 +357,10 @@ pub mod async_std;
 #[cfg(feature = "tokio-runtime")]
 pub mod tokio;
 
+#[cfg(unix)]
+mod completion_bridge;
 /// Errors and exceptions related to PyO3 Asyncio
 pub mod err;
-
 pub mod generic;
 
 #[pymodule]
@@ -663,6 +664,7 @@ pub fn into_future_with_locals(
     awaitable: Bound<PyAny>,
 ) -> PyResult<impl Future<Output = PyResult<Py<PyAny>>> + Send> {
     let py = awaitable.py();
+    let awaitable_keepalive = awaitable.clone().unbind();
     let (tx, rx) = oneshot::channel();
 
     call_soon_threadsafe(
@@ -675,6 +677,7 @@ pub fn into_future_with_locals(
     )?;
 
     Ok(async move {
+        let _awaitable_keepalive = awaitable_keepalive;
         match rx.await {
             Ok(item) => item,
             Err(_) => Python::attach(|py| {

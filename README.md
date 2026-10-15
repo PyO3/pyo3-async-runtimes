@@ -305,6 +305,17 @@ async def rust_sleep():
     await call_rust_sleep()
 ```
 
+On Unix, `future_into_py` delivers `Send` future completions through a
+per-event-loop socket reader. Completion callbacks run on the Python loop
+thread, so Rust runtime threads do not need to acquire the GIL to resolve
+Python futures. This uses `add_reader` where available (including the standard
+selector loop and uvloop); loops without it, such as Windows' default proactor
+loop, keep the existing completion path. The reader callback runs in an empty
+`contextvars` context; awaiting tasks retain their own contexts. Cancellation
+continues to cancel the Rust future, and already-completed Python futures are
+left untouched. Completions are drained in bounded batches for loop fairness,
+and the bridge does not keep a closed event loop alive.
+
 ## Managing Event Loops
 
 Python's event loop requires some special treatment, especially regarding the main thread. Some of
