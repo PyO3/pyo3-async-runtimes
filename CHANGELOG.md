@@ -14,6 +14,11 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 - Deliver `Send` future completions on the Python event-loop thread through a batched socket reader on Unix, avoiding the blocking-pool delivery hop while preserving the existing fallback for unsupported loops and cross-thread conversions. [#95](https://github.com/PyO3/pyo3-async-runtimes/pull/95)
 - Preserve Rust panic payload messages when delivering runtime task panics to Python. [#95](https://github.com/PyO3/pyo3-async-runtimes/pull/95)
+## [0.30.0] - 2026-10-15
+
+- chore: bump pyo3 version to 0.30. [#94](https://github.com/PyO3/pyo3-async-runtimes/pull/94)
+- bump MSRV to 1.85 to match pyo3-0.30
+- Bump `syn` dependency to 3. [#89](https://github.com/PyO3/pyo3-async-runtimes/pull/89)
 
 ## [0.29.0] - 2026-06-12
 
@@ -63,7 +68,8 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 Previous versions were published from [`pyo3-asyncio`](https://github.com/awestlake87/pyo3-asyncio). Consult that library for older changes.
 
-[Unreleased]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.29.0...HEAD
+[Unreleased]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.30.0...HEAD
+[0.30.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/PyO3/pyo3-async-runtimes/compare/v0.26.0...v0.27.0
