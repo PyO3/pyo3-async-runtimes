@@ -305,6 +305,80 @@ async def rust_sleep():
     await call_rust_sleep()
 ```
 
+On Unix, `future_into_py` delivers `Send` future completions through a
+per-event-loop socket reader. Completion callbacks run on the Python loop
+thread, so Rust runtime threads do not need to acquire the GIL to resolve
+Python futures. This uses `add_reader` where available (including the standard
+selector loop and uvloop); loops without it, such as Windows' default proactor
+loop, keep the existing completion path. Calls from another thread while the
+target loop is running also use that path, without registering a reader off
+the loop thread. The reader callback runs in an empty
+`contextvars` context; awaiting tasks retain their own contexts. Cancellation
+continues to cancel the Rust future, and already-completed Python futures are
+left untouched. Completions are drained in bounded batches for loop fairness,
+and the bridge does not keep a closed event loop alive.
+The bridge retains pending Python futures until delivery or loop cleanup.
+Cancelled or otherwise completed futures are skipped before result conversion.
+A panic during result conversion becomes `RustPanic` without interrupting the
+remaining completions in the batch.
+
+The completion contract tests also exercise the existing Windows fallback with
+explicit Proactor and Selector event loops: batched results, cancellation
+propagation and races, pending-future lifetime, and cross-thread conversions.
+Unix-only conversion and bridge-cleanup checks are not applied to that fallback.
+
+### Measuring completion overhead
+
+The no-I/O benchmark measures this checkout's actual implementation, rather than
+a downstream prototype:
+
+```bash
+PYO3_PYTHON=python3 cargo run --release --features tokio-runtime \
+    --example completion_benchmark
+```
+
+It reports JSON lines containing per-round samples, median wall-clock latency,
+and Python-thread CPU time in microseconds per operation. Sequential calls are
+measured warm and after 1 ms and 5 ms idle gaps; idle time is excluded. It also
+measures batches of 2,000 immediately ready Rust futures.
+
+`fast` uses `future_into_py`, `explicit_locals` captures the current context and
+uses `future_into_py_with_locals`, and `fallback` uses the same real loop with
+reader support temporarily hidden between measured blocks. Thus fallback does
+not include proxy-loop dispatch or failed socket registration. It still includes
+capability detection before entering the unchanged fallback implementation; it
+is not a separately built benchmark of the released crate. The benchmark's
+private event loop is not shared with application work.
+
+Use `COMPLETION_BENCH_ROUNDS` (default 8), `COMPLETION_BENCH_OPS` (default 200),
+and `COMPLETION_BENCH_LOOP=uvloop` to adjust the run. uvloop must be installed in
+the selected Python environment. Fast-path timings require Unix and a loop with
+reader support; the final `bridge_active` record confirms whether it was used.
+Run benchmarks without concurrent builds or tests, and repeat measurements on
+the same host before attributing small differences to code changes.
+
+Local measurements on Linux x86-64, CPython 3.12.3, Tokio's multi-thread runtime,
+and uvloop 0.23 are shown below. These use a release build of this branch,
+including interned completion-path method names, with 12 rounds of 200
+sequential operations and 12 batches of 2,000 operations:
+
+| Loop | Workload | Socket path | Existing fallback | Fallback / socket |
+|---|---|---:|---:|---:|
+| asyncio | Warm sequential | 8.59 us | 19.18 us | 2.23x |
+| asyncio | 1 ms idle | 19.03 us | 32.51 us | 1.71x |
+| asyncio | 5 ms idle | 39.83 us | 74.06 us | 1.86x |
+| asyncio | Batch of 2,000, per operation | 4.18 us | 16.19 us | 3.87x |
+| uvloop | Warm sequential | 6.30 us | 10.21 us | 1.62x |
+| uvloop | 1 ms idle | 15.57 us | 19.65 us | 1.26x |
+| uvloop | 5 ms idle | 29.52 us | 41.42 us | 1.40x |
+| uvloop | Batch of 2,000, per operation | 3.01 us | 6.63 us | 2.20x |
+
+Values are medians in microseconds, with idle time excluded. Warm Python-thread
+CPU time was 6.95 us versus 11.03 us with asyncio, and 4.59 us versus 5.26 us with
+uvloop. These no-I/O measurements isolate completion overhead; they are not
+predictions of end-to-end application speedups, and small changes between branch
+revisions still require repeated, controlled comparisons.
+
 ## Managing Event Loops
 
 Python's event loop requires some special treatment, especially regarding the main thread. Some of

@@ -12,6 +12,8 @@ To see unreleased changes, please see the CHANGELOG on the main branch.
 
 ## [Unreleased]
 
+- Deliver `Send` future completions on the Python event-loop thread through a batched socket reader on Unix, avoiding the blocking-pool delivery hop while preserving the existing fallback for unsupported loops and cross-thread conversions. [#95](https://github.com/PyO3/pyo3-async-runtimes/pull/95)
+- Preserve Rust panic payload messages when delivering runtime task panics to Python. [#95](https://github.com/PyO3/pyo3-async-runtimes/pull/95)
 ## [0.30.0] - 2026-10-15
 
 - chore: bump pyo3 version to 0.30. [#94](https://github.com/PyO3/pyo3-async-runtimes/pull/94)
