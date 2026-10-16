@@ -57,6 +57,11 @@ name = "tokio_multi_thread"
 path = "examples/tokio_multi_thread.rs"
 required-features = ["attributes", "tokio-runtime"]
 
+[[example]]
+name = "completion_benchmark"
+path = "examples/completion_benchmark.rs"
+required-features = ["tokio-runtime"]
+
 
 [[test]]
 name = "test_async_std_asyncio"

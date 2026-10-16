@@ -176,7 +176,10 @@ impl CompletionBridge {
             };
             let future = future.bind(py);
             let delivered = (|| {
-                if future.call_method0("done")?.is_truthy()? {
+                if future
+                    .call_method0(pyo3::intern!(py, "done"))?
+                    .is_truthy()?
+                {
                     return Ok(());
                 }
                 let result =
@@ -186,15 +189,21 @@ impl CompletionBridge {
                             crate::generic::get_panic_message(&*panic)
                         )))
                     });
-                if future.call_method0("done")?.is_truthy()? {
+                if future
+                    .call_method0(pyo3::intern!(py, "done"))?
+                    .is_truthy()?
+                {
                     return Ok(());
                 }
                 match result {
                     Ok(value) => {
-                        future.call_method1("set_result", (value,))?;
+                        future.call_method1(pyo3::intern!(py, "set_result"), (value,))?;
                     }
                     Err(error) => {
-                        future.call_method1("set_exception", (error.into_value(py),))?;
+                        future.call_method1(
+                            pyo3::intern!(py, "set_exception"),
+                            (error.into_value(py),),
+                        )?;
                     }
                 }
                 Ok::<(), PyErr>(())
@@ -214,7 +223,8 @@ pub(crate) fn for_loop(
 ) -> PyResult<Option<Py<CompletionBridge>>> {
     const ATTRIBUTE: &str = "_pyo3_async_runtimes_completion_bridge";
 
-    match event_loop.getattr(ATTRIBUTE) {
+    let attribute = pyo3::intern!(py, ATTRIBUTE);
+    match event_loop.getattr(attribute) {
         Ok(existing_ref) => {
             let existing = existing_ref.call0().map_err(|_| {
                 PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
@@ -222,7 +232,7 @@ pub(crate) fn for_loop(
                 ))
             })?;
             if existing.is_none() {
-                event_loop.delattr(ATTRIBUTE)?;
+                event_loop.delattr(attribute)?;
             } else {
                 let bridge = existing.extract::<Py<CompletionBridge>>().map_err(|_| {
                     PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
@@ -236,7 +246,7 @@ pub(crate) fn for_loop(
         Err(err) => return Err(err),
     }
 
-    let add_reader = match event_loop.getattr("add_reader") {
+    let add_reader = match event_loop.getattr(pyo3::intern!(py, "add_reader")) {
         Ok(add_reader) if add_reader.is_callable() => add_reader,
         Ok(_) => return Ok(None),
         Err(err) if err.is_instance_of::<pyo3::exceptions::PyAttributeError>(py) => {
@@ -277,7 +287,7 @@ pub(crate) fn for_loop(
         return Err(err);
     }
 
-    if let Err(err) = event_loop.setattr(ATTRIBUTE, weak_bridge) {
+    if let Err(err) = event_loop.setattr(attribute, weak_bridge) {
         event_loop.call_method1("remove_reader", (fd,))?;
         if err.is_instance_of::<pyo3::exceptions::PyAttributeError>(py)
             || err.is_instance_of::<pyo3::exceptions::PyTypeError>(py)
@@ -295,12 +305,15 @@ pub(crate) fn for_future(
     event_loop: &Bound<'_, PyAny>,
     future: &Bound<'_, PyAny>,
 ) -> PyResult<Option<(Arc<BridgeCore>, usize)>> {
-    let owner = future.call_method0("get_loop")?;
+    let owner = future.call_method0(pyo3::intern!(py, "get_loop"))?;
     match crate::get_running_loop(py) {
         Ok(running) if !running.is(&owner) => return Ok(None),
         Ok(_) => {}
         Err(error) if error.is_instance_of::<pyo3::exceptions::PyRuntimeError>(py) => {
-            if owner.call_method0("is_running")?.is_truthy()? {
+            if owner
+                .call_method0(pyo3::intern!(py, "is_running"))?
+                .is_truthy()?
+            {
                 return Ok(None);
             }
         }

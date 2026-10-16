@@ -1,6 +1,9 @@
 use std::{
     ffi::CString,
+    future::Future,
+    pin::Pin,
     sync::atomic::{AtomicUsize, Ordering},
+    task::{Context, Poll},
     time::Duration,
 };
 
@@ -32,6 +35,50 @@ impl Drop for DropGuard {
     fn drop(&mut self) {
         DROPS.fetch_add(1, Ordering::SeqCst);
     }
+}
+
+struct PanicFuture {
+    panic_on_drop: bool,
+    pending: bool,
+}
+
+impl Future for PanicFuture {
+    type Output = PyResult<usize>;
+
+    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
+        assert!(self.panic_on_drop, "intentional future-poll panic");
+        if self.pending {
+            Poll::Pending
+        } else {
+            Poll::Ready(Ok(42))
+        }
+    }
+}
+
+impl Drop for PanicFuture {
+    fn drop(&mut self) {
+        if self.panic_on_drop {
+            DROPS.fetch_add(1, Ordering::SeqCst);
+            panic!("intentional future-drop panic");
+        }
+    }
+}
+
+#[pyfunction]
+fn panic_future<'py>(
+    py: Python<'py>,
+    event_loop: Bound<'py, PyAny>,
+    panic_on_drop: bool,
+    pending: bool,
+) -> PyResult<Bound<'py, PyAny>> {
+    pyo3_async_runtimes::tokio::future_into_py_with_locals(
+        py,
+        TaskLocals::new(event_loop),
+        PanicFuture {
+            panic_on_drop,
+            pending,
+        },
+    )
 }
 
 #[pyfunction]
@@ -195,6 +242,36 @@ async def already_completed_result_is_not_converted(module):
     assert future.result() == 99
     assert module.counts()[0] == before
 
+async def future_panics_resolve_and_batch_continues(module):
+    for panic_on_drop, message in [
+        (False, "intentional future-poll panic"),
+        (True, "intentional future-drop panic"),
+    ]:
+        future = module.panic_future(asyncio.get_running_loop(), panic_on_drop, False)
+        other = module.value(asyncio.get_running_loop(), 0, False)
+        results = await asyncio.wait_for(
+            asyncio.gather(future, other, return_exceptions=True), 2
+        )
+        assert type(results[0]).__name__ == "RustPanic", results
+        assert message in str(results[0]), results
+        assert results[1] == 42, results
+
+async def cancelled_future_drop_panic_does_not_break_bridge(module):
+    before = module.counts()[1]
+    future = module.panic_future(asyncio.get_running_loop(), True, True)
+    await asyncio.sleep(0.01)
+    future.cancel()
+    try:
+        await future
+    except asyncio.CancelledError:
+        pass
+    for _ in range(100):
+        if module.counts()[1] > before:
+            break
+        await asyncio.sleep(0.001)
+    assert module.counts()[1] > before, "cancelled future was not dropped"
+    assert await asyncio.wait_for(module.value(asyncio.get_running_loop(), 0, False), 1) == 42
+
 def loop_close_cleanup(module, new_loop):
     loop = new_loop()
     future = module.value(loop, 50, False)
@@ -231,6 +308,8 @@ def main(module):
         cancellation_races,
         dropped_python_future_keeps_completion,
         cross_thread_registration,
+        future_panics_resolve_and_batch_continues,
+        cancelled_future_drop_panic_does_not_break_bridge,
     ]
     if sys.platform == "win32":
         factories = [
@@ -283,9 +362,17 @@ def main(module):
         def value(loop, delay_ms, panic):
             return module.value(LoopProxy(loop, "unsupported"), delay_ms, panic)
 
+        @staticmethod
+        def panic_future(loop, panic_on_drop, pending):
+            return module.panic_future(
+                LoopProxy(loop, "unsupported"), panic_on_drop, pending
+            )
+
     for test in [
         dropped_python_future_keeps_completion,
         cross_thread_registration,
+        future_panics_resolve_and_batch_continues,
+        cancelled_future_drop_panic_does_not_break_bridge,
     ]:
         loop = asyncio.new_event_loop()
         try:
@@ -305,6 +392,7 @@ fn main() -> PyResult<()> {
     Python::attach(|py| {
         let extension = PyModule::new(py, "completion_contract")?;
         extension.add_function(wrap_pyfunction!(value, &extension)?)?;
+        extension.add_function(wrap_pyfunction!(panic_future, &extension)?)?;
         extension.add_function(wrap_pyfunction!(counts, &extension)?)?;
         extension.add_function(wrap_pyfunction!(flush_deferred_references, &extension)?)?;
         let tests = PyModule::from_code(
