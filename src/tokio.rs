@@ -9,20 +9,19 @@
 //!
 //! ```toml
 //! [dependencies.pyo3-async-runtimes]
-//! version = "0.24"
+//! version = "0.30"
 //! features = ["unstable-streams"]
 //! ```
 
 use std::cell::OnceCell;
 use std::ops::Deref;
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 use std::{future::Future, pin::Pin, sync::Mutex};
 
 use ::tokio::{
     runtime::{Builder, Runtime},
     task,
 };
-use once_cell::sync::Lazy;
 use pyo3::prelude::*;
 
 use crate::{
@@ -64,7 +63,7 @@ impl Deref for Pyo3Runtime {
     }
 }
 
-static TOKIO_BUILDER: Lazy<Mutex<Builder>> = Lazy::new(|| Mutex::new(multi_thread()));
+static TOKIO_BUILDER: LazyLock<Mutex<Builder>> = LazyLock::new(|| Mutex::new(multi_thread()));
 static TOKIO_RUNTIME: OnceLock<Pyo3Runtime> = OnceLock::new();
 
 impl generic::JoinError for task::JoinError {
