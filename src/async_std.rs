@@ -584,9 +584,9 @@ pub fn into_future(
 /// ```
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v1(
-    gen: Bound<'_, PyAny>,
+    r#gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
-    generic::into_stream_v1::<AsyncStdRuntime>(gen)
+    generic::into_stream_v1::<AsyncStdRuntime>(r#gen)
 }
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>unstable-streams</code></span> Convert an async generator into a stream
@@ -646,9 +646,9 @@ pub fn into_stream_v1(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_with_locals_v1(
     locals: TaskLocals,
-    gen: Bound<'_, PyAny>,
+    r#gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures_util::stream::Stream<Item = PyResult<Py<PyAny>>> + 'static> {
-    generic::into_stream_with_locals_v1::<AsyncStdRuntime>(locals, gen)
+    generic::into_stream_with_locals_v1::<AsyncStdRuntime>(locals, r#gen)
 }
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>unstable-streams</code></span> Convert an async generator into a stream
@@ -708,9 +708,9 @@ pub fn into_stream_with_locals_v1(
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_with_locals_v2(
     locals: TaskLocals,
-    gen: Bound<'_, PyAny>,
+    r#gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures_util::stream::Stream<Item = Py<PyAny>> + 'static> {
-    generic::into_stream_with_locals_v2::<AsyncStdRuntime>(locals, gen)
+    generic::into_stream_with_locals_v2::<AsyncStdRuntime>(locals, r#gen)
 }
 
 /// <span class="module-item stab portability" style="display: inline; border-radius: 3px; padding: 2px; font-size: 80%; line-height: 1.2;"><code>unstable-streams</code></span> Convert an async generator into a stream
@@ -765,7 +765,7 @@ pub fn into_stream_with_locals_v2(
 /// ```
 #[cfg(feature = "unstable-streams")]
 pub fn into_stream_v2(
-    gen: Bound<'_, PyAny>,
+    r#gen: Bound<'_, PyAny>,
 ) -> PyResult<impl futures_util::stream::Stream<Item = Py<PyAny>> + 'static> {
-    generic::into_stream_v2::<AsyncStdRuntime>(gen)
+    generic::into_stream_v2::<AsyncStdRuntime>(r#gen)
 }
