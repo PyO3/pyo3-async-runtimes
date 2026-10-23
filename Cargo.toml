@@ -57,6 +57,11 @@ name = "tokio_multi_thread"
 path = "examples/tokio_multi_thread.rs"
 required-features = ["attributes", "tokio-runtime"]
 
+[[example]]
+name = "completion_benchmark"
+path = "examples/completion_benchmark.rs"
+required-features = ["tokio-runtime"]
+
 
 [[test]]
 name = "test_async_std_asyncio"
@@ -118,6 +123,12 @@ name = "test_race_condition_regression"
 path = "pytests/test_race_condition_regression.rs"
 harness = false
 required-features = ["async-std-runtime", "testing"]
+
+[[test]]
+name = "test_completion_bridge_contract"
+path = "pytests/test_completion_bridge_contract.rs"
+harness = false
+required-features = ["tokio-runtime"]
 
 [dependencies]
 async-channel = { version = "2.3", optional = true }

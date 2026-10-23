@@ -502,6 +502,11 @@ where
 /// If the `asyncio.Future` returned by this conversion is cancelled via `asyncio.Future.cancel`,
 /// the Rust future will be cancelled as well (new behaviour in `v0.15`).
 ///
+/// On Unix, completion is queued to an event-loop-owned socket reader when the
+/// loop supports `add_reader`. The Rust runtime thread does not acquire the
+/// GIL to deliver the result. Loops without `add_reader`, and conversions from
+/// outside a running target loop's thread, use the existing blocking completion path.
+///
 /// Python `contextvars` are preserved when calling async Python functions within the Rust future
 /// via [`into_future`] (new behaviour in `v0.15`).
 ///
@@ -625,6 +630,41 @@ where
         },),
     )?;
 
+    #[cfg(unix)]
+    if let Some((bridge, id)) =
+        crate::completion_bridge::for_future(py, locals.0.event_loop.bind(py), &py_fut)?
+    {
+        let bridge_for_result = bridge.clone();
+        let task = R::spawn(async move {
+            let result = R::scope(
+                locals.clone(),
+                Cancellable::new_with_cancel_rx(fut, cancel_rx),
+            )
+            .await;
+            bridge.send(
+                id,
+                Box::new(move |py| result.and_then(|val| val.into_py_any(py))),
+            );
+        });
+
+        R::spawn(async move {
+            if let Err(err) = task.await {
+                if err.is_panic() {
+                    let panic_message = format!(
+                        "rust future panicked: {}",
+                        get_panic_message(&*err.into_panic())
+                    );
+                    bridge_for_result.send(
+                        id,
+                        Box::new(move |_| Err(RustPanic::new_err(panic_message))),
+                    );
+                }
+            }
+        });
+
+        return Ok(py_fut);
+    }
+
     let future_tx1: Py<PyAny> = py_fut.clone().into();
     let future_tx2 = future_tx1.clone_ref(py);
 
@@ -672,7 +712,7 @@ where
 
                         let panic_message = format!(
                             "rust future panicked: {}",
-                            get_panic_message(&e.into_panic())
+                            get_panic_message(&*e.into_panic())
                         );
                         let _ = set_result(
                             locals.0.event_loop.bind(py),
@@ -689,7 +729,7 @@ where
     Ok(py_fut)
 }
 
-fn get_panic_message(any: &dyn std::any::Any) -> &str {
+pub(crate) fn get_panic_message(any: &dyn std::any::Any) -> &str {
     if let Some(str_slice) = any.downcast_ref::<&str>() {
         str_slice
     } else if let Some(string) = any.downcast_ref::<String>() {
@@ -784,6 +824,11 @@ impl PyDoneCallback {
 ///
 /// If the `asyncio.Future` returned by this conversion is cancelled via `asyncio.Future.cancel`,
 /// the Rust future will be cancelled as well (new behaviour in `v0.15`).
+///
+/// On Unix, completion is queued to an event-loop-owned socket reader when the
+/// loop supports `add_reader`. The Rust runtime thread does not acquire the
+/// GIL to deliver the result. Loops without `add_reader`, and conversions from
+/// outside a running target loop's thread, use the existing blocking completion path.
 ///
 /// Python `contextvars` are preserved when calling async Python functions within the Rust future
 /// via [`into_future`] (new behaviour in `v0.15`).
@@ -1086,7 +1131,7 @@ where
 
                     let panic_message = format!(
                         "rust future panicked: {}",
-                        get_panic_message(&e.into_panic())
+                        get_panic_message(&*e.into_panic())
                     );
                     let _ = set_result(
                         locals.0.event_loop.bind(py),
